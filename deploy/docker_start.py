@@ -53,6 +53,10 @@ def prepare(image_cfg: Path, live_cfg: Path, seed_file: Path) -> str:
 
 
 def main() -> None:
+    # which secrets arrived (never their values) - the first thing to check when Telegram is silent
+    print("environment: " + ", ".join(
+        f"{k} {'set' if os.environ.get(k, '').strip() else 'MISSING'}"
+        for k in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "DASHBOARD_PASSWORD")), flush=True)
     data_dir = load_config(ROOT / "config.yaml").data_dir
     live = data_dir / "config.yaml"
     print(prepare(ROOT / "config.yaml", live, data_dir / "config.image.sha256"), flush=True)
