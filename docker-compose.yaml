@@ -1,7 +1,8 @@
 # Ignition & Coil on a VPS (README "Running on a VPS").
-# Made for Hostinger Docker Manager -> "Compose from URL" with the GitHub repository link:
-# Hostinger downloads ONLY this file, so the image is built straight from the repository and
-# nothing here refers to other files. Every deploy rebuilds from the latest commit on master.
+# Made for Hostinger Docker Manager -> "Compose from URL" with this file's raw GitHub link:
+#   https://raw.githubusercontent.com/sudeep-sasikumar/IgnitionAndCoil/master/docker-compose.yaml
+# Hostinger downloads ONLY this file, so nothing here refers to other files. The image is built
+# by GitHub Actions (.github/workflows/docker-image.yml) on every push; a redeploy pulls the latest.
 #
 # Environment variables to enter in Docker Manager:
 #   TELEGRAM_BOT_TOKEN   from @BotFather
@@ -10,16 +11,15 @@
 #   DOMAIN               required - your VPS hostname, e.g. srv123456.hstgr.cloud (or your own domain)
 services:
   scanner:
-    build:
-      context: https://github.com/sudeep-sasikumar/IgnitionAndCoil.git#master
-    pull_policy: build                    # rebuild on every deploy, so a redeploy picks up new code
+    image: ghcr.io/sudeep-sasikumar/ignitionandcoil:latest
+    pull_policy: always                   # a redeploy picks up the newest image
     restart: unless-stopped
     environment:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
-      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:?set DASHBOARD_PASSWORD}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:-}   # required: the app refuses to start without it
       # login is enforced because bind_host is not localhost; cookies only over HTTPS
-      IC_OVERRIDES: "dashboard.bind_host=0.0.0.0;dashboard.open_browser=false;dashboard.cookie_secure=true;dashboard.base_url=https://${DOMAIN:?set DOMAIN}"
+      IC_OVERRIDES: "dashboard.bind_host=0.0.0.0;dashboard.open_browser=false;dashboard.cookie_secure=true;dashboard.base_url=https://${DOMAIN:-}"
     volumes:
       - scanner_data:/app/var             # database, live config.yaml, logs, backups
     expose:
@@ -33,7 +33,7 @@ services:
     restart: unless-stopped
     depends_on:
       - scanner
-    command: caddy reverse-proxy --from ${DOMAIN:?set DOMAIN} --to scanner:8000
+    command: caddy reverse-proxy --from ${DOMAIN:-} --to scanner:8000
     ports:
       - "80:80"
       - "443:443"

@@ -250,12 +250,12 @@ Double-click **`build_exe.bat`**. It builds `dist\MomentumScanner\MomentumScanne
 
 ## 10. Running on a VPS (Hostinger)
 
-The scanner runs 24/7 in Docker on the VPS, with HTTPS and a login. It is deployed straight from the GitHub repository with Hostinger's **Docker Manager**: no files to copy, nothing to install by hand.
+The scanner runs 24/7 in Docker on the VPS, with HTTPS and a login. GitHub builds the app image automatically on every push; Hostinger's **Docker Manager** downloads and runs it. No files to copy, nothing to install by hand.
 
 **Before you start**
 - The VPS must use Hostinger's **Docker** OS template (hPanel → VPS → *OS & Panel*). Changing the OS template **wipes the VPS**, so do it only on a VPS with nothing else on it.
 - Nothing else on the VPS may use ports 80/443 (e.g. an n8n or Traefik template).
-- The repository must be **public** (the image is built from it; a private one needs extra setup, ask).
+- The repository and its image (GitHub → your profile → *Packages* → `ignitionandcoil`) must be **public**, so the VPS can download the image without a login.
 
 **You supply 4 values**
 
@@ -268,7 +268,7 @@ The scanner runs 24/7 in Docker on the VPS, with HTTPS and a login. It is deploy
 
 **Steps**
 1. hPanel → **VPS** → **Docker Manager** → **Compose** → **Compose from URL**.
-2. URL: the GitHub repository link. Project name: `ignition-coil`.
+2. URL: `https://raw.githubusercontent.com/sudeep-sasikumar/IgnitionAndCoil/master/docker-compose.yaml`. Project name: `ignition-coil`.
 3. Enter the 4 variables above in the environment variables section.
 4. Click **Deploy**. The first build takes a few minutes.
 5. Open `https://<DOMAIN>` and sign in with `DASHBOARD_PASSWORD`. Telegram sends **"🟢 Back online"**.
@@ -276,12 +276,12 @@ The scanner runs 24/7 in Docker on the VPS, with HTTPS and a login. It is deploy
 
 **Afterwards**
 - It restarts by itself after crashes and VPS reboots.
-- **New code:** once it is pushed to the repository's `master` branch, press **Redeploy** in Docker Manager (every deploy rebuilds from the latest commit).
+- **New code:** after a push to `master`, wait for the green tick under the repository's *Actions* tab (about 2 minutes), then press **Redeploy** in Docker Manager.
 - **Settings page** changes (margin, leverage, fees, bedtime reminder) survive redeploys. Thresholds come from the repository's `config.yaml`.
 - **Logs:** Docker Manager → the project → *Logs* (service `scanner`).
 - Data (database, logs, daily backups) lives in the Docker volume `scanner_data`, which survives redeploys. Deleting the project in Docker Manager may delete it.
 
-How it fits together: Hostinger downloads only `docker-compose.yaml`; it builds the image straight from the repository (`Dockerfile`) and runs Caddy in front for automatic HTTPS. `deploy/docker_start.py` keeps the live `config.yaml` in the data volume. Moving to PostgreSQL later needs no code changes: install a Postgres driver and set `database.url`.
+How it fits together: `.github/workflows/docker-image.yml` builds the `Dockerfile` into `ghcr.io/sudeep-sasikumar/ignitionandcoil:latest` on every push. Hostinger downloads only `docker-compose.yaml`, pulls that image and runs Caddy in front for automatic HTTPS. `deploy/docker_start.py` keeps the live `config.yaml` in the data volume. Moving to PostgreSQL later needs no code changes: install a Postgres driver and set `database.url`.
 
 *Not yet run in Docker: Docker isn't installed on this PC. The config handling and the login/host settings were tested here.*
 
