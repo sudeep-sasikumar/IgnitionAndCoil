@@ -275,6 +275,7 @@ backtest:
   symbols: []                   # empty = top current WEEX USDT perps by 24h volume (see max_symbols)
   max_symbols: 40
   rate_limit_weight: 250        # per 10 s; leaves room for a live scanner on the same IP (WEEX limit 500)
+  download_concurrency: 6       # coins downloaded in parallel (each pages its history sequentially)
   cache_dir: bt_cache           # downloaded history (in data_dir), reused by later runs
   report_dir: backtests         # HTML reports + trade CSVs (in data_dir)
   oi_mode: auto                 # auto: use our own OI snapshots if they cover the period, else disable OI conditions

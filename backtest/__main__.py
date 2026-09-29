@@ -58,7 +58,7 @@ async def pick_symbols(cfg, rest, explicit: list[str], n: int) -> tuple[list[str
 
 
 async def prepare(cfg, rest, db, clock, days: int | None, symbols: str | None, max_symbols: int | None,
-                  overrides: list[str], concurrency: int = 6) -> dict:
+                  overrides: list[str], concurrency: int | None = None) -> dict:
     """Download/cache history and build the backtest inputs + the report's data notes."""
     server, b, af = await rest.server_time()
     clock.set_offset(server, b, af)
@@ -76,7 +76,7 @@ async def prepare(cfg, rest, db, clock, days: int | None, symbols: str | None, m
     inp.brackets = parse_risk_limits(await rest.risk_limits_all())
     t0 = time.time()
     done = 0
-    sem = asyncio.Semaphore(max(1, int(concurrency)))
+    sem = asyncio.Semaphore(max(1, int(concurrency or cfg.backtest.download_concurrency)))
 
     async def load(sym: str) -> None:
         """One symbol's history. Several run at once: downloads are latency-bound, and the shared
@@ -176,8 +176,8 @@ async def prepare(cfg, rest, db, clock, days: int | None, symbols: str | None, m
 async def main_async(a) -> int:
     base = load_config(a.config)
     d = copy.deepcopy(base.to_dict())
+    overrides = apply_overrides(d, a.set or [])   # first, so --set backtest.rate_limit_weight takes effect
     d["exchange"]["rate_limit_weight"] = d["backtest"]["rate_limit_weight"]   # share the IP with a live scanner
-    overrides = apply_overrides(d, a.set or [])
     cfg = Config(d, base.path)
     setup_logging(cfg.data_dir / "logs", cfg.app.log_level)
     t_run = time.time()
