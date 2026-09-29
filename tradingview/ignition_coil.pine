@@ -1,0 +1,134 @@
+//@version=6
+// ============================================================================================
+//  Ignition & Coil - TradingView companion (visual check only; the app never uses TradingView)
+//  Use on a 5-MINUTE chart of a WEEX perpetual, e.g. WEEX:SOLUSDT.P
+//
+//  REPLICATED (price/volume parts, same defaults as the app's config.yaml on 2026-09-28,
+//  "20x Policy S" model):
+//    Ignition: close > highest high of the prior 144 5m bars (12h breakout); RVOL 5m & 15m;
+//              close > rolling 24h VWAP; EMA20 > EMA50 on 15m; 1h return band; 24h return cap;
+//              relative strength vs BTC over 1h; breakout candle closes in the top 30% of its
+//              range and is <= 2.5 x ATR14(15m).
+//    Coil:     WATCH = 1h Bollinger-width (20, 2) percentile <= 15 over 720 1h bars,
+//              1h close > EMA50(1h), EMA50(1h) rising over 12 bars, |4h return| <= 1.5%.
+//              Coil box = high/low of the last 12 1h bars. ENTRY = 15m close above the box
+//              with RVOL 15m within 24h of WATCH.
+//
+//  NOT REPLICATED - the app checks these, this script cannot:
+//    * Open interest (oi_chg_1h >= 2% for Ignition, oi_chg_4h >= 3% for Coil WATCH)
+//    * Order flow: taker-buy ratio (15m) and CVD slope (1h)
+//    * Funding rate limits
+//    * Headroom to the nearest resistance (>= 3%) and the resistance map itself
+//    * The 0-100 score, the universe filters (volume, spread, depth, wick risk, listing age),
+//      the market regime, cooldowns and the trade plan / exit engine
+//  So a marker here means "the price/volume part fired". The app sends an ENTRY only if the
+//  rest also passes - expect MORE markers here than app signals.
+//
+//  Notes: 15m / 1h values update when those bars close, like the app. Markers are drawn on
+//  confirmed (closed) bars only. The 30-day BB-width percentile needs about 30 days of chart
+//  history on the 5m chart; with less, Coil WATCH stays off (lower "BB percentile lookback").
+// ============================================================================================
+indicator("Ignition & Coil (companion)", shorttitle = "I&C", overlay = true, max_labels_count = 300, max_lines_count = 300)
+
+// ---------------------------------------------------------------- inputs (= config.yaml)
+grpI = "Ignition"
+rangeBars   = input.int(144, "Breakout range (5m bars)", minval = 10, group = grpI, tooltip = "144 x 5m = 12 hours")
+minRvol5    = input.float(3.0, "Min RVOL 5m", step = 0.1, group = grpI)
+rvol5Len    = input.int(48, "RVOL 5m lookback (bars)", group = grpI)
+minRvol15   = input.float(1.2, "Min RVOL 15m", step = 0.1, group = grpI)
+rvol15Len   = input.int(32, "RVOL 15m lookback (bars)", group = grpI)
+minRet1h    = input.float(1.0, "Min 1h return %", step = 0.25, group = grpI)
+maxRet1h    = input.float(8.0, "Max 1h return %", step = 0.25, group = grpI)
+maxRet24h   = input.float(25.0, "Max 24h return %", group = grpI)
+minRs1h     = input.float(1.0, "Min RS vs BTC 1h %", step = 0.25, group = grpI)
+btcSym      = input.symbol("WEEX:BTCUSDT.P", "BTC reference", group = grpI)
+closeTopPct = input.float(30, "Close in top % of candle", group = grpI)
+maxCandAtr  = input.float(2.5, "Max candle size (x ATR15m)", step = 0.1, group = grpI)
+vwapBars    = input.int(288, "VWAP window (5m bars)", group = grpI, tooltip = "288 x 5m = 24h rolling VWAP")
+
+grpC = "Coil"
+maxBbwPct   = input.float(15, "Max BB-width percentile (1h)", group = grpC)
+bbLen       = input.int(20, "BB length (1h)", group = grpC)
+bbMult      = input.float(2.0, "BB multiplier", group = grpC)
+bbPctLen    = input.int(720, "BB percentile lookback (1h bars)", group = grpC, tooltip = "720 = 30 days")
+maxAbsRet4h = input.float(1.5, "Max |4h return| %", step = 0.1, group = grpC)
+boxBars     = input.int(12, "Coil box (1h bars)", group = grpC)
+minRvol15C  = input.float(2.5, "Min RVOL 15m for ENTRY", step = 0.1, group = grpC)
+watchHours  = input.int(24, "WATCH valid for (hours)", group = grpC)
+
+grpD = "Display"
+showLines   = input.bool(true, "Show VWAP / EMAs", group = grpD)
+showTable   = input.bool(true, "Show condition table", group = grpD)
+
+// ---------------------------------------------------------------- 5m (chart) values
+rvol5  = volume / ta.sma(volume[1], rvol5Len)
+hh     = ta.highest(high[1], rangeBars)
+ret1h  = (close / close[12] - 1) * 100
+ret4h  = (close / close[48] - 1) * 100
+ret24h = (close / close[288] - 1) * 100
+btc    = request.security(btcSym, timeframe.period, close)
+rs1h   = ret1h - (btc / btc[12] - 1) * 100
+vwap24 = math.sum(hlc3 * volume, vwapBars) / math.sum(volume, vwapBars)
+
+// ---------------------------------------------------------------- 15m and 1h values
+[ema20_15, ema50_15, atr15, rvol15] = request.security(syminfo.tickerid, "15",
+     [ta.ema(close, 20), ta.ema(close, 50), ta.atr(14), volume / ta.sma(volume[1], rvol15Len)])
+bbw(src) => 2 * bbMult * ta.stdev(src, bbLen) / ta.sma(src, bbLen)
+[bbwPct1h, close1h, ema50_1h, ema50Rising, boxHi1h, boxLo1h] = request.security(syminfo.tickerid, "60",
+     [ta.percentrank(bbw(close), bbPctLen), close, ta.ema(close, 50), ta.ema(close, 50) > ta.ema(close, 50)[12],
+      ta.highest(high, boxBars), ta.lowest(low, boxBars)])
+
+// ---------------------------------------------------------------- Ignition
+rng       = high - low
+closePos  = rng > 0 ? (close - low) / rng : 0.0
+cBreakout = close > hh
+cRvol     = rvol5 >= minRvol5 and rvol15 >= minRvol15
+cTrend    = close > vwap24 and ema20_15 > ema50_15
+cMomentum = ret1h >= minRet1h and ret1h <= maxRet1h and ret24h <= maxRet24h and rs1h >= minRs1h
+cCandle   = closePos >= 1 - closeTopPct / 100 and rng <= maxCandAtr * atr15
+ignition  = barstate.isconfirmed and cBreakout and cRvol and cTrend and cMomentum and cCandle
+
+// ---------------------------------------------------------------- Coil WATCH -> ENTRY
+watchNow = bbwPct1h <= maxBbwPct and close1h > ema50_1h and ema50Rising and math.abs(ret4h) <= maxAbsRet4h
+var float boxHi = na
+var float boxLo = na
+var int watchUntil = 0
+if barstate.isconfirmed and watchNow
+    boxHi := boxHi1h
+    boxLo := boxLo1h
+    watchUntil := time_close + watchHours * 3600000
+watching = time_close <= watchUntil and not na(boxHi)
+is15Close = time_close % (15 * 60 * 1000) == 0          // this 5m bar closes a 15m bar
+coilEntry = barstate.isconfirmed and watching and is15Close and close > boxHi and rvol15 >= minRvol15C
+if coilEntry
+    watchUntil := 0                                     // the entry consumes the WATCH (as in the app)
+
+// ---------------------------------------------------------------- plots
+plot(showLines ? vwap24 : na, "VWAP 24h", color.new(#5b9dff, 0), 1, plot.style_line)
+plot(showLines ? ema20_15 : na, "EMA20 15m", color.new(#f0b429, 0), 1)
+plot(showLines ? ema50_15 : na, "EMA50 15m", color.new(#b48cff, 0), 1)
+plot(watching ? boxHi : na, "Coil high", color.new(#4dd0e1, 0), 1, plot.style_linebr)
+plot(watching ? boxLo : na, "Coil low", color.new(#4dd0e1, 40), 1, plot.style_linebr)
+bgcolor(watching ? color.new(#4dd0e1, 93) : na, title = "Coil WATCH")
+plotshape(ignition, "Ignition", shape.triangleup, location.belowbar, color.new(#f0b429, 0), text = "IGN", textcolor = color.new(#f0b429, 0), size = size.small)
+plotshape(coilEntry, "Coil entry", shape.triangleup, location.belowbar, color.new(#4dd0e1, 0), text = "COIL", textcolor = color.new(#4dd0e1, 0), size = size.small)
+
+alertcondition(ignition, "Ignition (price/volume part)", "Ignition price/volume conditions on {{ticker}} at {{close}}")
+alertcondition(coilEntry, "Coil entry (price/volume part)", "Coil breakout price/volume conditions on {{ticker}} at {{close}}")
+
+// ---------------------------------------------------------------- condition table (last bar)
+var table t = table.new(position.top_right, 2, 10, bgcolor = color.new(#161a22, 10), border_width = 1)
+row(i, name, ok) =>
+    table.cell(t, 0, i, name, text_color = color.new(#8a93a3, 0), text_size = size.small, text_halign = text.align_left)
+    table.cell(t, 1, i, ok ? "✓" : "✗", text_color = ok ? color.new(#26a69a, 0) : color.new(#ef5350, 0), text_size = size.small)
+if showTable and barstate.islast
+    table.cell(t, 0, 0, timeframe.period == "5" ? "Ignition & Coil" : "Use a 5m chart!", text_color = color.white, text_size = size.small)
+    table.cell(t, 1, 0, "", text_size = size.small)
+    row(1, "12h breakout", cBreakout)
+    row(2, "RVOL 5m / 15m", cRvol)
+    row(3, "VWAP + 15m EMAs", cTrend)
+    row(4, "1h / 24h return, RS", cMomentum)
+    row(5, "Candle shape", cCandle)
+    row(6, "Coil WATCH", watching)
+    row(7, "Not checked:", false)
+    table.cell(t, 1, 7, "OI, CVD, funding, headroom", text_color = color.new(#8a93a3, 0), text_size = size.tiny)

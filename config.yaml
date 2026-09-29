@@ -1,0 +1,282 @@
+# Ignition & Coil — all thresholds live here (spec rule 0.4).
+# Times are UTC internally; display timezone below.
+# Sections marked (M2+) are read by later milestones.
+
+app:
+  display_tz: Europe/London
+  data_dir: var                 # SQLite DB, logs, backups
+  log_level: INFO
+  log_max_bytes: 5_000_000
+  log_backups: 10
+
+exchange:
+  rest_base: https://api-contract.weex.com
+  ws_public: wss://ws-contract.weex.com/v3/ws/public
+  # WEEX public limit is 500 weight / rolling 10 s per IP (verified M0). Keep headroom.
+  rate_limit_weight: 400
+  rate_limit_window_s: 10
+  http_timeout_s: 15
+  max_retries: 5
+  backoff_base_s: 1.0
+  backoff_max_s: 60.0
+  ws_channels_per_conn: 90      # WEEX max 100
+  ws_sub_batch: 30              # channels per SUBSCRIBE message
+  # M0 finding: kline field [9]/"V" documented as taker-BUY volume is actually taker-SELL.
+  # taker_buy = volume - field. Verified live against the trade tape; checked at runtime.
+  kline_taker_field_is_sell: true
+  bar_close_delay_s: 3          # wait after a bar boundary before fetching the closed bar
+  bar_fetch_retries: 4
+  bar_fetch_retry_s: 2
+  clock_drift_warn_s: 1.0
+  clock_check_interval_min: 60
+
+universe:
+  refresh_min: 30
+  contract_types: [PERPETUAL]   # TRADIFI_PERPETUAL excluded (decision 2026-09-27)
+  quote_asset: USDT
+  stablecoin_bases: [USDC, USDT, FDUSD, TUSD, DAI, USDE, USDD, PYUSD, BUSD, USDP, USD1, RLUSD, EURC, EURT, GUSD, FRAX, LUSD, SUSD, UST, USTC]
+  min_quote_volume_24h: 5_000_000
+  max_spread_pct: 0.08
+  min_book_depth_usd_0_5pct: 20_000
+  depth_band_pct: 0.5
+  min_listing_age_days: 7
+  min_atr_1h_pct: 1.0
+  atr_period: 14
+  deep_wick_pct: 1.2
+  max_deep_wick_bars: 3
+  wick_lookback_bars_5m: 288    # 24h of 5m bars
+  max_symbols: 80
+  include_majors: false
+  majors: [BTCUSDT, ETHUSDT]
+  regime_reference: BTCUSDT
+
+bars:
+  # ring-buffer sizes (bars kept in memory per symbol)
+  keep:
+    5m: 1000
+    15m: 400
+    1h: 1000                    # 30d BB-width percentile needs ~740
+    4h: 400                     # 60d swing highs need 360
+  warmup_limit:                 # /klines limit on startup (max 1000)
+    5m: 1000
+    15m: 400
+    1h: 1000
+    4h: 400
+  refresh_limit: 3              # bars fetched at each boundary (gaps are detected and back-filled)
+
+database:
+  url: "sqlite:///{data_dir}/scanner.db"
+
+open_interest:
+  poll_s: 60
+  match_tolerance_s: 150        # snapshot must be this close to the target time to derive a change
+
+funding:
+  poll_s: 3                     # premiumIndex (mark + funding, all symbols, weight 1): mark-price stops need it fresh
+  normalise_to_min: 480         # 8h-equivalent
+  # premiumIndex: lastFundingRate = rate already settled; forecastFundingRate = rate for the
+  # next settlement (verified vs fundingRate history). "Current rate" = forecast.
+  rate_field: forecast          # forecast | last
+
+orderflow:
+  trade_check: true             # compare WS trade tape with kline taker volume each closed 5m bar
+  trade_check_tolerance: 0.05   # relative mismatch tolerated before raising an incident
+  trade_dedupe_size: 20000
+
+features:
+  rvol_5m_lookback: 48
+  rvol_15m_lookback: 32
+  vwap_bars_5m: 288
+  ema_fast: 20
+  ema_slow: 50
+  bb_period: 20
+  bb_mult: 2.0
+  bb_pct_lookback_1h: 720       # 30 days
+  cvd_bars_5m: 12               # 1h
+  taker_ratio_bars_5m: 3        # 15m
+
+regime:
+  ema_period_1h: 50
+  ema_slope_bars_1h: 12
+  btc_dump_bars_15m: 3
+  btc_dump_pct: -0.6
+  breadth_ema_1h: 20
+  risk_on_breadth: 55
+  risk_off_breadth: 40
+
+watchdog:
+  stale_after_s: 120
+
+console:
+  top_n: 20
+
+# ---------------- M2: levels, setups, score, plan, alerts ----------------
+levels:
+  pivot_bars: 3                 # swing high = highest of 3 bars each side (confirmed only)
+  swing_1h_lookback_bars: 336   # 14 days
+  swing_4h_lookback_bars: 360   # 60 days
+  high_7d_bars_1h: 168
+  high_30d_bars_1h: 720
+  vp_lookback_bars_1h: 336      # volume profile, 14 days of 1h bars
+  vp_bin_pct: 0.25
+  hvn_window_bins: 3            # HVN = local max within +-N bins ...
+  hvn_min_ratio: 1.5            # ... and >= this x mean non-empty bin volume
+  ignore_within_pct: 0.3
+  discovery_atr_mult: 3.0       # headroom when no level above: 3 x ATR1h%
+
+ignition:
+  range_bars_5m: 144            # 12h range breakout
+  min_rvol_5m: 3.0             # 20x-S model (walk-forward 2026-09-28, docs/DECISIONS.md)
+  min_rvol_15m: 1.2            # 20x-S model (chosen in all 3 walk-forward windows)
+  min_ret_1h: 1.0
+  max_ret_1h: 8.0              # 20x-S model
+  max_ret_24h: 25.0
+  min_rs_1h: 1.0
+  min_oi_chg_1h: 2.0
+  min_taker_ratio_15m: 0.55
+  min_cvd_slope: 0.0            # strictly greater than
+  max_funding_8h_pct: 0.03
+  min_headroom_pct: 3.0         # = TP1: first target sits at or before resistance (was 4.0; changed 2026-09-27 after backtest)
+  close_top_pct: 30             # close in the top 30% of the candle range
+  max_candle_atr15: 2.5
+
+coil:
+  max_bbw_pct: 15
+  min_oi_chg_4h: 3.0
+  max_abs_ret_4h: 1.5
+  max_funding_8h_pct: 0.01
+  box_bars_1h: 12
+  watch_valid_h: 24
+  min_rvol_15m: 2.5            # 20x-S model
+  min_taker_ratio_15m: 0.55
+  min_headroom_pct: 3.0         # = TP1 (was 4.0; changed 2026-09-27 after backtest)
+
+score:
+  min_entry: 55                # 20x-S model
+  # Each component scores 0..1 on a linear ramp lo->hi, times its weight (weights sum to 100).
+  # A component disabled via signals.disabled_conditions is dropped and the rest rescaled to 100.
+  # Ramps start below the hard minimums so a bare-minimum pass scores ~50 and a solid setup
+  # in RISK_ON ~70. PROVISIONAL - to be calibrated with the M5 backtest.
+  rvol:     {weight: 20, lo_ignition: 1.5, hi_ignition: 7.0, lo_coil: 1.5, hi_coil: 5.0}
+  rs:       {weight: 15, lo: 0.0, hi: 3.0}          # rs_1h %
+  oi:       {weight: 15, lo: 0.0, hi: 5.0}          # oi_chg_1h (ignition) / oi_chg_4h (coil) %
+  flow:     {weight: 15, taker_lo: 0.50, taker_hi: 0.65, cvd_share: 0.3}
+  headroom: {weight: 15, lo: 2.0, hi: 8.0}
+  regime:   {weight: 10, RISK_ON: 1.0, NEUTRAL: 0.5, RISK_OFF: 0.0}
+  funding:  {weight: 10, best_pct: 0.0, worst_pct: 0.03}  # funding_8h %
+  wick_penalty_per_bar: 5
+  wick_penalty_max: 15
+
+signals:
+  symbol_cooldown_min: 120
+  max_alerts_per_hour: 6
+  disabled_conditions: []       # e.g. [oi] when OI history is unavailable (backtests)
+  watch_alerts: true
+  blackout_alerts: false
+  # Times in London time. Example:
+  # - {start: "2026-10-14 13:20", end: "2026-10-14 13:50", label: "US CPI"}
+  blackout_windows: []
+  sessions_utc:                 # [start_hour, end_hour) UTC; weekend is tagged separately
+    ASIA: [0, 7]
+    LONDON: [7, 13]
+    NEW_YORK: [13, 21]
+    LATE_US: [21, 24]
+  last_price_max_age_s: 20      # use WS last trade as reference entry if this fresh, else bar close
+
+trade:
+  margin_usd: 50                # 20x-S model (was 20): same $1,000 position at 20x
+  leverage: 20                  # was 50: liquidation ~4.8% away, so structural stops fit
+  notional_usd: 1000
+  maker_fee: 0.0002
+  taker_fee: 0.0008
+  slippage_pct: 0.03            # % applied to market fills (entry, stops)
+  liq_stop_buffer_pct: 0.15
+  default_stop_policy: S        # your model: structural stop. Pre-selected in the journal, marked in alerts
+  require_default_policy: true  # no Telegram ENTRY when the default policy is n/a for a signal (still recorded + paper-traded)
+  stop_trigger_price: mark      # mark | last (liquidation always uses mark)
+  max_chase_pct: 0.5
+
+plan:
+  ignition_stop_atr15: 0.1      # Policy S: breakout candle low - 0.1 x ATR15m
+  coil_stop_atr15: 0.25         # Policy S: coil high - 0.25 x ATR15m
+  tp1_pct: 3.0
+  tp1_close_pct: 40
+  tp2_pct: 6.0
+  tp2_close_pct: 30
+  tp2_res_offset_pct: 0.2       # TP2 = min(+6%, nearest resistance - 0.2%)
+  tp2_min_gap_pct: 1.0          # drop TP2 if it is <= TP1 + 1.0%
+  time_stop_min: 45
+  time_stop_target_pct: 1.0
+  chandelier_atr15: 2.5
+  runner_swing_atr15: 0.1
+  max_hold_h: 8
+  # fee assumption per leg: entries/stops are market (taker), targets are limit (maker)
+  entry_fee: taker
+  stop_fee: taker
+  tp_fee: maker
+
+tradingview:
+  tv_symbol_template: "WEEX:{symbol}.P"
+  tv_fallback_template: "BINANCE:{symbol}.P"
+  tv_overrides: {}              # e.g. {BPUSDT: "BINANCE:BPUSDT.P"}
+  tv_missing_file: tv_missing.json   # written by tools/check_tv_symbols.py (in data_dir)
+  chart_url: "https://www.tradingview.com/chart/?symbol={tv_symbol}"
+
+telegram:
+  enabled: true                 # needs TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID in .env
+  api_base: https://api.telegram.org
+  min_send_interval_s: 1.1      # Telegram: ~1 message/second per chat
+  poll_commands: true
+  poll_timeout_s: 25
+
+dashboard:
+  base_url: "http://localhost:8000"   # used for links in alerts
+  bind_host: 127.0.0.1          # localhost only. Anything else REQUIRES login (DASHBOARD_PASSWORD in .env)
+  port: 8000
+  open_browser: true            # open the dashboard when the app starts
+  cookie_secure: false          # set true when served over HTTPS (VPS behind a reverse proxy)
+  session_days: 30
+  extra_allowed_hosts: []       # extra Host names accepted (e.g. your VPS domain)
+  price_push_s: 2               # live price updates to the browser
+  chart_bars_15m: 300
+
+reminders:                      # used from M4 (journal); editable in Settings
+  bedtime_reminder: "23:30"     # London time
+  bedtime_repeat_min: 30
+  daily_summary: "23:00"
+
+# ---------------- M4: exits, paper trading, journal, reminders ----------------
+exits:
+  swing_pivot_bars_15m: 3       # runner trail: last confirmed 15m swing low (3 bars each side)
+  intrabar: conservative        # replay/backtest bars: stop checked before targets inside one bar
+  tick_s: 1                     # live evaluation interval for open trades
+
+paper:
+  enabled: true                 # baseline paper trades for EVERY signal (both stop policies)
+
+journal:
+  trail_notify_min_pct: 0.5     # "Move SL" alert only if the suggested stop is >= 0.5% above your logged stop
+  trail_notify_min_interval_min: 15
+  validate_prices: true         # warn (never block) if a logged price is outside that minute's high/low
+  replay_max_days: 3            # late logging: replay the plan over historical 5m bars up to this far back
+  default_entry_order: market   # market (taker) | limit (maker) - fee used for your entry
+  default_exit_order: market
+
+notifications:
+  paper_updates: summary        # summary = one line per closed paper trade, threaded to its signal | off
+  bedtime_end: "06:00"          # bedtime reminders stop repeating at this London time
+
+backup:
+  keep: 30                      # daily copies of the SQLite DB in <data_dir>/backups
+
+# ---------------- M5: backtester ----------------
+backtest:
+  days: 30                      # period to replay (ending now)
+  symbols: []                   # empty = top current WEEX USDT perps by 24h volume (see max_symbols)
+  max_symbols: 40
+  rate_limit_weight: 250        # per 10 s; leaves room for a live scanner on the same IP (WEEX limit 500)
+  cache_dir: bt_cache           # downloaded history (in data_dir), reused by later runs
+  report_dir: backtests         # HTML reports + trade CSVs (in data_dir)
+  oi_mode: auto                 # auto: use our own OI snapshots if they cover the period, else disable OI conditions
+  oi_min_coverage: 0.8
+  universe_refresh_min: 30      # dynamic universe rebuilt from klines every 30 min of simulated time

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ignition &amp; Coil</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><a href="/" data-link>Ignition &amp; Coil</a></div>
+  <nav class="nav">
+    <a href="/" data-link>Scanner</a>
+    <a href="/signals" data-link>Signals</a>
+    <a href="/trades" data-link>My trades</a>
+    <a href="/stats" data-link>Stats</a>
+    <a href="/settings" data-link>Settings</a>
+  </nav>
+  <div class="status" id="status"><span class="chip muted">connecting…</span></div>
+</header>
+<main id="app"></main>
+<footer class="foot">Signals only — this app never places, changes or cancels orders. Charts by <a href="https://www.tradingview.com/" target="_blank" rel="noopener">TradingView Lightweight Charts</a>.</footer>
+<script src="/static/vendor/lightweight-charts.standalone.production.js"></script>
+<script src="/static/app.js"></script>
+<script src="/static/journal.js"></script>
+</body>
+</html>

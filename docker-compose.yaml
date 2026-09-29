@@ -1,0 +1,50 @@
+# Ignition & Coil on a VPS (README "Running on a VPS").
+# Made for Hostinger Docker Manager -> "Compose from URL" with the GitHub repository link:
+# Hostinger downloads ONLY this file, so the image is built straight from the repository and
+# nothing here refers to other files. Every deploy rebuilds from the latest commit on master.
+#
+# Environment variables to enter in Docker Manager:
+#   TELEGRAM_BOT_TOKEN   from @BotFather
+#   TELEGRAM_CHAT_ID     your chat id (README "Telegram alerts")
+#   DASHBOARD_PASSWORD   required - the dashboard login, pick a long one
+#   DOMAIN               required - your VPS hostname, e.g. srv123456.hstgr.cloud (or your own domain)
+services:
+  scanner:
+    build:
+      context: https://github.com/sudeep-sasikumar/IgnitionAndCoil.git#master
+    pull_policy: build                    # rebuild on every deploy, so a redeploy picks up new code
+    restart: unless-stopped
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:?set DASHBOARD_PASSWORD}
+      # login is enforced because bind_host is not localhost; cookies only over HTTPS
+      IC_OVERRIDES: "dashboard.bind_host=0.0.0.0;dashboard.open_browser=false;dashboard.cookie_secure=true;dashboard.base_url=https://${DOMAIN:?set DOMAIN}"
+    volumes:
+      - scanner_data:/app/var             # database, live config.yaml, logs, backups
+    expose:
+      - "8000"                            # only reachable through Caddy, never published directly
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+
+  caddy:                                  # HTTPS with automatic Let's Encrypt certificates
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - scanner
+    command: caddy reverse-proxy --from ${DOMAIN:?set DOMAIN} --to scanner:8000
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+
+volumes:
+  scanner_data:
+  caddy_data:
+  caddy_config:
