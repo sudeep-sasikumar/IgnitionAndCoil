@@ -215,11 +215,22 @@ def test_sessions_and_weekend(cfg):
     assert name == "NEW_YORK" and "WEEKEND" in tags
 
 
+def _coil(cfg, enabled: bool):
+    import copy
+    from core.config import Config
+    d = copy.deepcopy(cfg.to_dict())
+    d["coil"]["enabled"] = enabled
+    return Config(d, cfg.path)
+
+
 def test_watch_state_reported(cfg):
-    se = SignalEngine(cfg)
+    on = _coil(cfg, True)                                # independent of the live coil.enabled
     f = coil_features(rvol_5m=1.0)                       # ignition fails, coil watch holds
-    row, sigs, watch = _eval(se, cfg, 1_000_000 * M5 + M5, f=f)
+    row, sigs, watch = _eval(SignalEngine(on), on, 1_000_000 * M5 + M5, f=f)
     assert row.state == WATCH and watch is not None and not sigs
+    off_cfg = _coil(cfg, False)                          # coil.enabled: false -> no WATCH at all
+    row, sigs, watch = _eval(SignalEngine(off_cfg), off_cfg, 1_000_000 * M5 + M5, f=f)
+    assert row.state == SKIP and watch is None and not sigs
 
 
 def _swing_naive(h, n, lookback):
