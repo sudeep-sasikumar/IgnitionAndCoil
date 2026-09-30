@@ -33,7 +33,33 @@ SCORES = [f"sc_{k}" for k in SCORE_KEYS]
 CONDS = ["c_" + k.split(".", 1)[1] for k in IGN_KEYS]
 LIVE = ["premium_pct", "funding_fc_8h", "funding_last_8h", "oi_raw", "spread_pct", "depth_usd", "qv24h",
         "listing_age_d", "tape_age_s"]
+# order book fetched at every bar (top 15 levels - the 200-level book shows huge resting orders deep down)
+BOOK = ["book_spread_pct", "book_bid_usd", "book_ask_usd", "book_imbalance", "book_bid_05_usd", "book_ask_05_usd",
+        "book_reach_pct", "book_age_s"]
+LIVE += BOOK
 LABELS = ["fwd_1h", "fwd_4h", "fwd_24h", "mfe_4h", "mae_4h", "tp3_first"]
+
+
+def book_stats(bids: list, asks: list, band_pct: float = 0.5) -> dict:
+    """Top-of-book measures from WEEX depth levels [[price, qty], ...] (qty in base units)."""
+    try:
+        b = sorted(((float(p), float(q)) for p, q in bids), reverse=True)
+        a = sorted((float(p), float(q)) for p, q in asks)
+    except (TypeError, ValueError):
+        return {}
+    if not b or not a:
+        return {}
+    mid = (b[0][0] + a[0][0]) / 2
+    bid_usd, ask_usd = sum(p * q for p, q in b), sum(p * q for p, q in a)
+    lo, hi = mid * (1 - band_pct / 100), mid * (1 + band_pct / 100)
+    return {
+        "book_spread_pct": (a[0][0] - b[0][0]) / mid * 100,
+        "book_bid_usd": bid_usd, "book_ask_usd": ask_usd,
+        "book_imbalance": (bid_usd - ask_usd) / (bid_usd + ask_usd) if bid_usd + ask_usd > 0 else None,
+        "book_bid_05_usd": sum(p * q for p, q in b if p >= lo), "book_ask_05_usd": sum(p * q for p, q in a if p <= hi),
+        # how far the fetched levels reach from mid (if < band, the 0.5% sums are truncated)
+        "book_reach_pct": min(mid - b[-1][0], a[-1][0] - mid) / mid * 100,
+    }
 COLUMNS = META + MARKET + BAR + FEATURES + SCORES + CONDS + LIVE
 TEXT = {"symbol", "state", "setup", "suppressed", "regime", "config"}
 

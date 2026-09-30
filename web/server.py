@@ -297,7 +297,7 @@ def create_app(eng, hub: WebHub) -> FastAPI:
 
     @app.get("/api/research/file/{name}")
     async def api_research_file(name: str):
-        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}\.csv\.gz", name):
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}(\.[a-z])?\.csv\.gz", name):
             return JSONResponse({"error": "bad file name"}, status_code=400)
         p = Path(cfg.data_dir) / "research" / "snapshots" / name
         if not p.exists():

@@ -435,7 +435,8 @@ class Engine:
         await self.publish_watches(watches)
         if self.recorder:
             try:
-                rows = self.recorder.rows(as_of, sigs)
+                books = await self.recorder.books(list(self.features))
+                rows = self.recorder.rows(as_of, sigs, books)
                 await asyncio.to_thread(self.recorder.write, as_of, rows)
             except Exception:  # noqa: BLE001 - research data never disturbs the scanner
                 log.exception("research recorder failed")

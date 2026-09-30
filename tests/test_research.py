@@ -92,3 +92,35 @@ def test_sync_accepts_only_complete_gzip_and_daily_names(tmp_path):
     bad.write_bytes(good.read_bytes()[:-8])                 # cut mid-member (download while writing)
     assert gzip_ok(good) and not gzip_ok(bad)
     assert NAME.fullmatch("2026-09-30.csv.gz") and not NAME.fullmatch("../x.csv.gz")
+
+
+def test_book_stats_top_levels():
+    from research.schema import book_stats
+    bids = [["99.9", "10"], ["99.5", "20"], ["98.0", "1000"]]       # 98.0 is outside 0.5% of mid
+    asks = [["100.1", "5"], ["100.4", "10"], ["102.0", "999"]]
+    s = book_stats(bids, asks)
+    assert s["book_spread_pct"] == pytest.approx(0.2)
+    assert s["book_bid_05_usd"] == pytest.approx(99.9 * 10 + 99.5 * 20)
+    assert s["book_ask_05_usd"] == pytest.approx(100.1 * 5 + 100.4 * 10)
+    assert -1 < s["book_imbalance"] < 1 and s["book_reach_pct"] == pytest.approx(2.0)
+    assert book_stats([], asks) == {}
+
+
+def test_recorder_starts_a_new_file_when_the_layout_changes(tmp_path):
+    from research.recorder import Recorder
+
+    class Eng:
+        class cfg:
+            data_dir = tmp_path
+    rec = Recorder(Eng)
+    old = rec.dir / "2026-10-01.csv.gz"
+    with gzip.open(old, "wt") as fh:                          # a file written by an older version
+        fh.write("ts,symbol\n1,A\n")
+    row = {c: "" for c in COLUMNS}
+    from datetime import datetime, timezone
+    row.update(ts=int(datetime(2026, 10, 1, 12, tzinfo=timezone.utc).timestamp() * 1000), symbol="B")
+    rec.write(row["ts"], [row])
+    assert (rec.dir / "2026-10-01.b.csv.gz").exists()
+    rec.write(row["ts"], [row])                               # same layout: keeps appending to .b
+    assert not (rec.dir / "2026-10-01.c.csv.gz").exists()
+    assert len(pd.read_csv(gzip.open(rec.dir / "2026-10-01.b.csv.gz", "rt"))) == 2

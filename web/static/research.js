@@ -98,7 +98,7 @@ function researchView(app) {
     files.replaceChildren(!data.recording ? h("p", { class: "muted", text: "Recording is off (research.record_snapshots)." })
       : data.files.length ? h("div", { class: "small" }, h("p", { class: "muted", text: `${data.files.length} day(s) recorded. One CSV per UTC day - open in Excel or pandas.` }),
         h("div", { class: "row", style: "flex-wrap:wrap" }, data.files.slice(-30).reverse().map((f) =>
-          h("a", { class: "btn small-btn", href: `/api/research/file/${f.name}`, text: `${f.name.slice(0, 10)} (${(f.bytes / 1e6).toFixed(1)} MB)` }))))
+          h("a", { class: "btn small-btn", href: `/api/research/file/${f.name}`, text: `${f.name.replace(".csv.gz", "")} (${(f.bytes / 1e6).toFixed(1)} MB)` }))))
       : h("p", { class: "muted", text: "Recording started - the first file appears after the next 5-minute bar." }));
   }
   async function load() {

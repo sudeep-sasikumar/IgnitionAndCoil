@@ -26,7 +26,7 @@ import httpx
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from core.config import load_config, load_env  # noqa: E402
 
-NAME = re.compile(r"\d{4}-\d{2}-\d{2}\.csv\.gz")
+NAME = re.compile(r"\d{4}-\d{2}-\d{2}(\.[a-z])?\.csv\.gz")   # .b/.c = same day, newer column layout
 log = logging.getLogger("research_sync")
 
 
