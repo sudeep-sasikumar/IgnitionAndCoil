@@ -27,4 +27,5 @@ jobs:
           context: .
           push: true
           tags: ghcr.io/sudeep-sasikumar/ignitionandcoil:latest
+          build-args: APP_VERSION=${{ github.sha }}
           labels: org.opencontainers.image.source=https://github.com/sudeep-sasikumar/IgnitionAndCoil

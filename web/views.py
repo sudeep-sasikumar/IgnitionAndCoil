@@ -1,6 +1,7 @@
 """JSON views of engine state for the dashboard."""
 from __future__ import annotations
 
+import os
 import time
 
 import numpy as np
@@ -33,6 +34,8 @@ def header(eng) -> dict:
         "paused": eng.paused,
         "watch_muted": eng.watch_muted,
         "telegram": eng.tg.enabled,
+        "version": os.environ.get("APP_VERSION", "dev")[:7],     # git commit of the running image
+        "config_hash": eng.cfg.hash,
         "oi_history_min": eng.oi.history_minutes(eng.btc),
         **trade_counts(eng),
     })

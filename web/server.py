@@ -91,6 +91,8 @@ def create_app(eng, hub: WebHub) -> FastAPI:
         resp.headers["X-Frame-Options"] = "DENY"
         if path.startswith("/api"):
             resp.headers["Cache-Control"] = "no-store"
+        elif path.startswith("/static") and "Cache-Control" not in resp.headers:
+            resp.headers["Cache-Control"] = "no-cache"   # revalidate: a redeploy shows up on the next reload
         return resp
 
     # ---- pages -------------------------------------------------------------

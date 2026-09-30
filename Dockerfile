@@ -3,7 +3,10 @@
 # and the app refuses to serve beyond localhost without DASHBOARD_PASSWORD.
 FROM python:3.12-slim
 
-ENV PYTHONUNBUFFERED=1 \
+# the git commit this image was built from (set by the GitHub workflow); shown on the dashboard
+ARG APP_VERSION=dev
+ENV APP_VERSION=${APP_VERSION} \
+    PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     IC_HOME=/app \
     TZ=UTC

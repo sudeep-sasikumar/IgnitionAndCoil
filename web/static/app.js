@@ -89,6 +89,8 @@ function renderHeader(disconnected) {
   if (x.open_trades) el.append(h("a", { class: "chip info", href: "/trades", "data-link": true }, `${x.open_trades} open trade${x.open_trades > 1 ? "s" : ""}`));
   if (x.paused) el.append(h("span", { class: "chip warn", text: "Signals paused" }));
   if (!x.telegram) el.append(h("span", { class: "chip muted", title: "Set TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID in .env", text: "Telegram off" }));
+  const ver = document.getElementById("version");
+  if (ver && x.version) ver.textContent = ` · version ${x.version} · config ${x.config_hash || "?"}`;
 }
 
 // ---------------------------------------------------------------- router
@@ -174,7 +176,7 @@ function scannerView(app) {
       onclick: () => { S.sort = { key: c.key, dir: S.sort.key === c.key ? -S.sort.dir : (c.key === "symbol" ? 1 : -1) }; savePref("sort", S.sort); draw(); },
     }, c.label, S.sort.key === c.key ? h("span", { class: "arrow", text: S.sort.dir > 0 ? "▲" : "▼" }) : null)));
     const body = rows.map((r) => h("tr", {
-      class: `clickable state-${r.state}`, title: r.failed && r.failed.length ? "Failed: " + r.failed.join(", ") : "All conditions pass",
+      class: `clickable state-${r.state}`, title: r.failed && r.failed.length ? "Active conditions failing: " + r.failed.join(", ") : "All active conditions pass",
       onclick: (e) => { if (!e.target.closest("a")) navigate(`/symbol/${r.symbol}`); },
     }, COLS.map((c) => h("td", { class: c.left ? "left" : "" }, c.fmt(r)))));
     wrap.replaceChildren(h("table", {}, h("thead", {}, thead), h("tbody", {}, body)));

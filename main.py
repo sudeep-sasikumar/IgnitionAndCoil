@@ -46,7 +46,7 @@ def main() -> int:
     apply_port_env(cfg)
     a = cfg.app
     setup_logging(cfg.data_dir / "logs", a.log_level, a.log_max_bytes, a.log_backups)
-    print(f"Ignition & Coil - config {cfg.hash} - data in {cfg.data_dir}")
+    print(f"Ignition & Coil - version {os.environ.get('APP_VERSION', 'dev')[:7]} - config {cfg.hash} - data in {cfg.data_dir}")
     try:
         asyncio.run(Engine(cfg).run(once=args.once))
     except KeyboardInterrupt:
