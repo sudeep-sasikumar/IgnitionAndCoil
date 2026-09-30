@@ -89,9 +89,19 @@ async def test_suppression_rules(tmp_cfg):
         assert (row.alert_status, row.suppressed_reason) == ("suppressed", "paused")
         eng.db.set_state("signals_paused", False)
 
-        s = make_signal(tmp_cfg, 1_000_200 * M5)
-        s.tags.append("RISK_OFF")
-        assert (await _publish(eng, s)).suppressed_reason == "risk_off"
+        sig_cfg = tmp_cfg.to_dict()["signals"]
+        before = sig_cfg.get("suppress_longs_in_risk_off")
+        try:
+            sig_cfg["suppress_longs_in_risk_off"] = True          # RISK_OFF longs held back
+            s = make_signal(tmp_cfg, 1_000_200 * M5)
+            s.tags.append("RISK_OFF")
+            assert (await _publish(eng, s)).suppressed_reason == "risk_off"
+            sig_cfg["suppress_longs_in_risk_off"] = False         # ... or alerted (config since 2026-09-30)
+            s = make_signal(tmp_cfg, 1_000_250 * M5)
+            s.tags.append("RISK_OFF")
+            assert (await _publish(eng, s)).suppressed_reason is None
+        finally:
+            sig_cfg["suppress_longs_in_risk_off"] = before
 
         s = make_signal(tmp_cfg, 1_000_300 * M5)
         s.tags.append("BLACKOUT:CPI")

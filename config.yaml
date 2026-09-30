@@ -181,7 +181,7 @@ signals:
   disabled_conditions: []       # e.g. [oi] when OI history is unavailable (backtests)
   watch_alerts: true
   blackout_alerts: false
-  suppress_longs_in_risk_off: true   # long ENTRY alerts are held back while the regime is RISK_OFF
+  suppress_longs_in_risk_off: false  # false = long ENTRY alerts also in RISK_OFF (2026-09-30: held back they made +0.45R over 28 trades in 2 years)
   # Times in London time. Example:
   # - {start: "2026-10-14 13:20", end: "2026-10-14 13:50", label: "US CPI"}
   blackout_windows: []
