@@ -172,6 +172,20 @@ Evidence it is not luck: removing them one at a time improves both years at ever
 
 **First findings (history, thresholds from 2024-25, 2025-26 unseen):** every remaining filter earns its keep (its near misses do worse than the signals that fired, both years). Stronger breakouts win more (bigger candle, further above VWAP / 12h high, stronger RS and returns). Candidate systems vs current (345 / +11.2R / +$701 and 242 / +55.1R / +$1,200): room ≥ 4.4% -> 246 / +23.9R / +$872 and 178 / +54.2R / +$1,153 with a lower drawdown (9.8R / 8.9R); current + "burst" (candle ≥ 1.52 ATR and 1h ≥ +3.8%) -> 115 / +29.4R / +$908 and 102 / +30.2R / +$839, profit factor 1.88 / 1.82, drawdown 7.8R / 7.2R; "burst" alone -> 598 / +26.9R / +$909 and 640 / +83.6R / +$2,023 but a 29.5R drawdown. Big +6% moves are rarely caught (2%): most start without a 12h-high breakout, in very volatile coins after a dip; volatility predicts size, not direction. Nothing switched live. Also noted: WEEX's 200-level book shows very large resting orders a few ticks deep, so the USD depth figure is inflated for big coins.
 
+## WEEX vs Binance (2026-10-01)
+
+`python -m research.binance`: Binance USDT-M futures 5m klines (with taker-buy volume) + funding for the 40 history coins (39 listed on Binance; not WXTUSDT), two years, free public data. The scanner's formulas were re-implemented vectorised and reproduce 100% of the recorded WEEX values before any Binance value was used. Execution stays on WEEX in every variant.
+
+| Finding (median over coins, both years) | Result |
+|---|---|
+| 5m price moves | Identical: return correlation 0.998, median price gap 0.00-0.01%, no lead in either direction at 5m (lag correlations -0.01 to -0.03). A few coins lower (FIL 0.84, CROSS 0.97, TON 0.98). |
+| Volume | WEEX trades ~36-42% of Binance's volume (median). Unusually, WEEX shows MORE volume than Binance on CROSS (10.6x), TRX (5x), BTW (4.2x), BNB (3.7x), ZAMA (3x) - cause unknown. (An earlier 3.5-day check showing PEPE at 6x read the wrong kline field; over two years with the validated data PEPE is 0.73x.) |
+| Taker buy/sell flow | Barely related: correlation 0.11-0.14. |
+| Which predicts breakout trades | 5m volume spike: both work equally (rank correlation WEEX 0.87/0.96, Binance 0.99/0.92). 15m volume: WEEX slightly better. Taker ratio and CVD: not consistent on EITHER exchange. |
+| Systems (live alert rules, exact trades) | Current: +11.2R/$701 and +55.1R/$1,200. Swapping in Binance CVD, volume or both makes it WORSE in both years (e.g. both: +5.6R/$457 and +15.5R/$696). Only Binance funding as the funding filter helps slightly: +16.5R/$747 and +55.5R/$1,203 (it makes the filter usable in 2024-25, where WEEX has no funding history). |
+
+**Decision: stay on WEEX data.** Binance's volume and order flow do not make better signals; its funding adds a small, one-year gain - not worth a live dependency on Binance (reachability from the VPS untested). Revisit with live data if needed.
+
 ## Threshold changes (your decisions)
 
 | Date | Change | Why |

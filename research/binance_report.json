@@ -1,0 +1,1608 @@
+{
+ "generated_ms": 1790808573631,
+ "coverage": {
+  "listed": [
+   "1000PEPEUSDT",
+   "1000SHIBUSDT",
+   "AAVEUSDT",
+   "ADAUSDT",
+   "AKEUSDT",
+   "ARBUSDT",
+   "AVAXUSDT",
+   "BCHUSDT",
+   "BNBUSDT",
+   "BTWUSDT",
+   "CROSSUSDT",
+   "DOGEUSDT",
+   "DOTUSDT",
+   "FILUSDT",
+   "HBARUSDT",
+   "HYPEUSDT",
+   "JSTUSDT",
+   "LINKUSDT",
+   "LTCUSDT",
+   "MANAUSDT",
+   "MARSCOINUSDT",
+   "NEARUSDT",
+   "ONDOUSDT",
+   "PENGUUSDT",
+   "QNTUSDT",
+   "SOLUSDT",
+   "SUIUSDT",
+   "TAOUSDT",
+   "TONUSDT",
+   "TRXUSDT",
+   "UAIUSDT",
+   "UNIUSDT",
+   "USUSDT",
+   "WLDUSDT",
+   "XLMUSDT",
+   "XMRUSDT",
+   "XRPUSDT",
+   "ZAMAUSDT",
+   "ZECUSDT"
+  ],
+  "not_on_binance": [
+   "WXTUSDT"
+  ]
+ },
+ "formula_check": {
+  "cvd_norm": 1.0,
+  "rvol_15m": 1.0,
+  "rvol_5m": 1.0,
+  "taker_15m": 1.0
+ },
+ "compare": {
+  "1000PEPEUSDT": {
+   "y2025": {
+    "bars": 105108,
+    "ret_corr": 0.9986,
+    "weex_after_binance": 0.0,
+    "binance_after_weex": -0.001,
+    "price_gap_pct": 0.0012,
+    "volume_ratio": 0.499,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.352
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.9997,
+    "weex_after_binance": -0.134,
+    "binance_after_weex": -0.134,
+    "price_gap_pct": 0.0024,
+    "volume_ratio": 0.732,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.116
+   }
+  },
+  "1000SHIBUSDT": {
+   "y2025": {
+    "bars": 105108,
+    "ret_corr": 0.9974,
+    "weex_after_binance": -0.01,
+    "binance_after_weex": -0.011,
+    "price_gap_pct": 0.0,
+    "volume_ratio": 0.355,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.369
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.9985,
+    "weex_after_binance": 0.057,
+    "binance_after_weex": 0.058,
+    "price_gap_pct": 0.0,
+    "volume_ratio": 0.53,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.252
+   }
+  },
+  "AAVEUSDT": {
+   "y2025": {
+    "bars": 105108,
+    "ret_corr": 0.9806,
+    "weex_after_binance": -0.009,
+    "binance_after_weex": -0.009,
+    "price_gap_pct": 0.0,
+    "volume_ratio": 0.214,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.065
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.9994,
+    "weex_after_binance": -0.158,
+    "binance_after_weex": -0.159,
+    "price_gap_pct": 0.0055,
+    "volume_ratio": 0.114,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.056
+   }
+  },
+  "ADAUSDT": {
+   "y2025": {
+    "bars": 105108,
+    "ret_corr": 0.9983,
+    "weex_after_binance": 0.005,
+    "binance_after_weex": 0.006,
+    "price_gap_pct": 0.0077,
+    "volume_ratio": 0.888,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.241
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.9956,
+    "weex_after_binance": -0.058,
+    "binance_after_weex": -0.059,
+    "price_gap_pct": 0.0114,
+    "volume_ratio": 0.091,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.041
+   }
+  },
+  "AKEUSDT": {
+   "y2026": {
+    "bars": 102721,
+    "ret_corr": NaN,
+    "weex_after_binance": NaN,
+    "binance_after_weex": NaN,
+    "price_gap_pct": 0.0277,
+    "volume_ratio": 0.509,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.105
+   }
+  },
+  "ARBUSDT": {
+   "y2025": {
+    "bars": 105108,
+    "ret_corr": 0.9981,
+    "weex_after_binance": -0.009,
+    "binance_after_weex": -0.009,
+    "price_gap_pct": 0.0,
+    "volume_ratio": 0.057,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.04
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.9929,
+    "weex_after_binance": -0.107,
+    "binance_after_weex": -0.106,
+    "price_gap_pct": 0.011,
+    "volume_ratio": 0.136,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.095
+   }
+  },
+  "AVAXUSDT": {
+   "y2025": {
+    "bars": 105108,
+    "ret_corr": 0.9988,
+    "weex_after_binance": -0.004,
+    "binance_after_weex": -0.004,
+    "price_gap_pct": 0.0,
+    "volume_ratio": 1.156,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.158
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.9995,
+    "weex_after_binance": -0.192,
+    "binance_after_weex": -0.194,
+    "price_gap_pct": 0.0052,
+    "volume_ratio": 0.505,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": -0.014
+   }
+  },
+  "BCHUSDT": {
+   "y2025": {
+    "bars": 105108,
+    "ret_corr": 0.9987,
+    "weex_after_binance": -0.013,
+    "binance_after_weex": -0.016,
+    "price_gap_pct": 0.0018,
+    "volume_ratio": 0.354,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.177
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.9995,
+    "weex_after_binance": 0.003,
+    "binance_after_weex": 0.003,
+    "price_gap_pct": 0.002,
+    "volume_ratio": 0.486,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.254
+   }
+  },
+  "BNBUSDT": {
+   "y2025": {
+    "bars": 105108,
+    "ret_corr": 0.999,
+    "weex_after_binance": 0.004,
+    "binance_after_weex": 0.001,
+    "price_gap_pct": 0.0,
+    "volume_ratio": 11.424,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.48
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.9982,
+    "weex_after_binance": -0.152,
+    "binance_after_weex": -0.161,
+    "price_gap_pct": 0.0011,
+    "volume_ratio": 3.749,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.217
+   }
+  },
+  "BTWUSDT": {
+   "y2026": {
+    "bars": 33813,
+    "ret_corr": 0.9979,
+    "weex_after_binance": 0.009,
+    "binance_after_weex": 0.008,
+    "price_gap_pct": 0.0212,
+    "volume_ratio": 4.238,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.219
+   }
+  },
+  "CROSSUSDT": {
+   "y2025": {
+    "bars": 23490,
+    "ret_corr": 0.99,
+    "weex_after_binance": 0.003,
+    "binance_after_weex": -0.001,
+    "price_gap_pct": 0.0264,
+    "volume_ratio": 0.158,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.122
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.9689,
+    "weex_after_binance": 0.08,
+    "binance_after_weex": 0.065,
+    "price_gap_pct": 0.0283,
+    "volume_ratio": 10.644,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.084
+   }
+  },
+  "DOGEUSDT": {
+   "y2025": {
+    "bars": 105108,
+    "ret_corr": 0.9988,
+    "weex_after_binance": -0.005,
+    "binance_after_weex": -0.005,
+    "price_gap_pct": 0.0039,
+    "volume_ratio": 0.761,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.312
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.9996,
+    "weex_after_binance": -0.062,
+    "binance_after_weex": -0.065,
+    "price_gap_pct": 0.0054,
+    "volume_ratio": 0.291,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.147
+   }
+  },
+  "DOTUSDT": {
+   "y2025": {
+    "bars": 105108,
+    "ret_corr": 0.9978,
+    "weex_after_binance": -0.013,
+    "binance_after_weex": -0.015,
+    "price_gap_pct": 0.0,
+    "volume_ratio": 0.127,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.005
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.981,
+    "weex_after_binance": -0.022,
+    "binance_after_weex": -0.024,
+    "price_gap_pct": 0.0179,
+    "volume_ratio": 0.166,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": -0.01
+   }
+  },
+  "FILUSDT": {
+   "y2025": {
+    "bars": 105108,
+    "ret_corr": 0.9957,
+    "weex_after_binance": -0.027,
+    "binance_after_weex": -0.029,
+    "price_gap_pct": 0.0,
+    "volume_ratio": 0.067,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": -0.029
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.8404,
+    "weex_after_binance": 0.061,
+    "binance_after_weex": 0.052,
+    "price_gap_pct": 0.0131,
+    "volume_ratio": 0.072,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.038
+   }
+  },
+  "HBARUSDT": {
+   "y2025": {
+    "bars": 105108,
+    "ret_corr": 0.9988,
+    "weex_after_binance": -0.011,
+    "binance_after_weex": -0.013,
+    "price_gap_pct": 0.0,
+    "volume_ratio": 0.946,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.297
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.9992,
+    "weex_after_binance": 0.093,
+    "binance_after_weex": 0.097,
+    "price_gap_pct": 0.0059,
+    "volume_ratio": 0.682,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.113
+   }
+  },
+  "HYPEUSDT": {
+   "y2025": {
+    "bars": 35298,
+    "ret_corr": 0.9961,
+    "weex_after_binance": -0.027,
+    "binance_after_weex": -0.03,
+    "price_gap_pct": 0.0025,
+    "volume_ratio": 0.067,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.144
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.9994,
+    "weex_after_binance": -0.019,
+    "binance_after_weex": -0.019,
+    "price_gap_pct": 0.0024,
+    "volume_ratio": 0.024,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.18
+   }
+  },
+  "JSTUSDT": {
+   "y2025": {
+    "bars": 44526,
+    "ret_corr": 0.9786,
+    "weex_after_binance": 0.011,
+    "binance_after_weex": -0.005,
+    "price_gap_pct": 0.0057,
+    "volume_ratio": 0.276,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": -0.012
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.9888,
+    "weex_after_binance": 0.006,
+    "binance_after_weex": 0.011,
+    "price_gap_pct": 0.0088,
+    "volume_ratio": 1.197,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.02
+   }
+  },
+  "LINKUSDT": {
+   "y2025": {
+    "bars": 105108,
+    "ret_corr": 0.9988,
+    "weex_after_binance": -0.015,
+    "binance_after_weex": -0.017,
+    "price_gap_pct": 0.0042,
+    "volume_ratio": 1.255,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.245
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.9994,
+    "weex_after_binance": 0.034,
+    "binance_after_weex": 0.03,
+    "price_gap_pct": 0.0066,
+    "volume_ratio": 0.783,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": -0.039
+   }
+  },
+  "LTCUSDT": {
+   "y2025": {
+    "bars": 105108,
+    "ret_corr": 0.9986,
+    "weex_after_binance": -0.017,
+    "binance_after_weex": -0.018,
+    "price_gap_pct": 0.0,
+    "volume_ratio": 0.418,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.135
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.9983,
+    "weex_after_binance": -0.035,
+    "binance_after_weex": -0.032,
+    "price_gap_pct": 0.01,
+    "volume_ratio": 0.612,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.017
+   }
+  },
+  "MANAUSDT": {
+   "y2025": {
+    "bars": 105108,
+    "ret_corr": 0.9976,
+    "weex_after_binance": -0.005,
+    "binance_after_weex": -0.006,
+    "price_gap_pct": 0.0,
+    "volume_ratio": 0.273,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": -0.066
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.9758,
+    "weex_after_binance": 0.101,
+    "binance_after_weex": 0.108,
+    "price_gap_pct": 0.0145,
+    "volume_ratio": 0.42,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": -0.037
+   }
+  },
+  "MARSCOINUSDT": {
+   "y2026": {
+    "bars": 8230,
+    "ret_corr": NaN,
+    "weex_after_binance": 0.046,
+    "binance_after_weex": NaN,
+    "price_gap_pct": 0.0217,
+    "volume_ratio": 0.058,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.11
+   }
+  },
+  "NEARUSDT": {
+   "y2025": {
+    "bars": 105108,
+    "ret_corr": 0.9973,
+    "weex_after_binance": -0.01,
+    "binance_after_weex": -0.011,
+    "price_gap_pct": 0.0,
+    "volume_ratio": 0.047,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.044
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.9918,
+    "weex_after_binance": -0.097,
+    "binance_after_weex": -0.099,
+    "price_gap_pct": 0.0391,
+    "volume_ratio": 0.029,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.047
+   }
+  },
+  "ONDOUSDT": {
+   "y2025": {
+    "bars": 105108,
+    "ret_corr": 0.9985,
+    "weex_after_binance": -0.013,
+    "binance_after_weex": -0.014,
+    "price_gap_pct": 0.0,
+    "volume_ratio": 0.181,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.064
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.9985,
+    "weex_after_binance": -0.046,
+    "binance_after_weex": -0.05,
+    "price_gap_pct": 0.0133,
+    "volume_ratio": 0.15,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": -0.006
+   }
+  },
+  "PENGUUSDT": {
+   "y2025": {
+    "bars": 82046,
+    "ret_corr": NaN,
+    "weex_after_binance": NaN,
+    "binance_after_weex": NaN,
+    "price_gap_pct": 0.0,
+    "volume_ratio": 0.701,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.208
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.9995,
+    "weex_after_binance": -0.074,
+    "binance_after_weex": -0.072,
+    "price_gap_pct": 0.0082,
+    "volume_ratio": 0.327,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.326
+   }
+  },
+  "QNTUSDT": {
+   "y2025": {
+    "bars": 105108,
+    "ret_corr": 0.9981,
+    "weex_after_binance": 0.001,
+    "binance_after_weex": 0.001,
+    "price_gap_pct": 0.0,
+    "volume_ratio": 0.462,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.007
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.9973,
+    "weex_after_binance": 0.031,
+    "binance_after_weex": 0.027,
+    "price_gap_pct": 0.0119,
+    "volume_ratio": 0.145,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.074
+   }
+  },
+  "SOLUSDT": {
+   "y2025": {
+    "bars": 105108,
+    "ret_corr": 0.9988,
+    "weex_after_binance": -0.009,
+    "binance_after_weex": -0.01,
+    "price_gap_pct": 0.0044,
+    "volume_ratio": 0.468,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.432
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.9991,
+    "weex_after_binance": -0.054,
+    "binance_after_weex": -0.056,
+    "price_gap_pct": 0.0064,
+    "volume_ratio": 0.227,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.089
+   }
+  },
+  "SUIUSDT": {
+   "y2025": {
+    "bars": 105108,
+    "ret_corr": 0.9972,
+    "weex_after_binance": 0.002,
+    "binance_after_weex": -0.0,
+    "price_gap_pct": 0.0028,
+    "volume_ratio": 0.592,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.269
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.9998,
+    "weex_after_binance": -0.116,
+    "binance_after_weex": -0.115,
+    "price_gap_pct": 0.0042,
+    "volume_ratio": 0.325,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.115
+   }
+  },
+  "TAOUSDT": {
+   "y2025": {
+    "bars": 105108,
+    "ret_corr": 0.9897,
+    "weex_after_binance": -0.025,
+    "binance_after_weex": -0.032,
+    "price_gap_pct": 0.0134,
+    "volume_ratio": 0.08,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.066
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.9995,
+    "weex_after_binance": -0.08,
+    "binance_after_weex": -0.081,
+    "price_gap_pct": 0.0036,
+    "volume_ratio": 0.047,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.127
+   }
+  },
+  "TONUSDT": {
+   "y2025": {
+    "bars": 105108,
+    "ret_corr": 0.9988,
+    "weex_after_binance": -0.02,
+    "binance_after_weex": -0.02,
+    "price_gap_pct": 0.0,
+    "volume_ratio": 0.344,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.087
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.9763,
+    "weex_after_binance": -0.265,
+    "binance_after_weex": -0.259,
+    "price_gap_pct": 0.0064,
+    "volume_ratio": 0.595,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.21
+   }
+  },
+  "TRXUSDT": {
+   "y2025": {
+    "bars": 105108,
+    "ret_corr": 0.9988,
+    "weex_after_binance": 0.028,
+    "binance_after_weex": 0.028,
+    "price_gap_pct": 0.0,
+    "volume_ratio": 2.896,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.415
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.9983,
+    "weex_after_binance": 0.028,
+    "binance_after_weex": 0.024,
+    "price_gap_pct": 0.0029,
+    "volume_ratio": 4.981,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.216
+   }
+  },
+  "UAIUSDT": {
+   "y2026": {
+    "bars": 94326,
+    "ret_corr": NaN,
+    "weex_after_binance": NaN,
+    "binance_after_weex": NaN,
+    "price_gap_pct": 0.0331,
+    "volume_ratio": 0.343,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.007
+   }
+  },
+  "UNIUSDT": {
+   "y2025": {
+    "bars": 105108,
+    "ret_corr": 0.9987,
+    "weex_after_binance": -0.008,
+    "binance_after_weex": -0.009,
+    "price_gap_pct": 0.0,
+    "volume_ratio": 0.197,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.085
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.9984,
+    "weex_after_binance": 0.061,
+    "binance_after_weex": 0.055,
+    "price_gap_pct": 0.0154,
+    "volume_ratio": 0.217,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.037
+   }
+  },
+  "USUSDT": {
+   "y2026": {
+    "bars": 66104,
+    "ret_corr": NaN,
+    "weex_after_binance": NaN,
+    "binance_after_weex": NaN,
+    "price_gap_pct": 0.0448,
+    "volume_ratio": 0.678,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.164
+   }
+  },
+  "WLDUSDT": {
+   "y2025": {
+    "bars": 105108,
+    "ret_corr": 0.9985,
+    "weex_after_binance": -0.011,
+    "binance_after_weex": -0.013,
+    "price_gap_pct": 0.0,
+    "volume_ratio": 0.243,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.092
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.9992,
+    "weex_after_binance": -0.174,
+    "binance_after_weex": -0.176,
+    "price_gap_pct": 0.0125,
+    "volume_ratio": 0.189,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.26
+   }
+  },
+  "XLMUSDT": {
+   "y2025": {
+    "bars": 105108,
+    "ret_corr": 0.9989,
+    "weex_after_binance": -0.002,
+    "binance_after_weex": -0.003,
+    "price_gap_pct": 0.0,
+    "volume_ratio": 0.58,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.275
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.9994,
+    "weex_after_binance": -0.011,
+    "binance_after_weex": -0.009,
+    "price_gap_pct": 0.0042,
+    "volume_ratio": 0.716,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.269
+   }
+  },
+  "XMRUSDT": {
+   "y2025": {
+    "bars": 105108,
+    "ret_corr": 0.997,
+    "weex_after_binance": -0.047,
+    "binance_after_weex": -0.045,
+    "price_gap_pct": 0.0,
+    "volume_ratio": 0.574,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.027
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.9962,
+    "weex_after_binance": -0.014,
+    "binance_after_weex": -0.017,
+    "price_gap_pct": 0.0031,
+    "volume_ratio": 0.634,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.122
+   }
+  },
+  "XRPUSDT": {
+   "y2025": {
+    "bars": 105108,
+    "ret_corr": 0.9987,
+    "weex_after_binance": -0.02,
+    "binance_after_weex": -0.02,
+    "price_gap_pct": 0.0035,
+    "volume_ratio": 0.668,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.367
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.9997,
+    "weex_after_binance": -0.036,
+    "binance_after_weex": -0.035,
+    "price_gap_pct": 0.004,
+    "volume_ratio": 0.486,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.198
+   }
+  },
+  "ZAMAUSDT": {
+   "y2026": {
+    "bars": 68976,
+    "ret_corr": NaN,
+    "weex_after_binance": 0.022,
+    "binance_after_weex": NaN,
+    "price_gap_pct": 0.0321,
+    "volume_ratio": 3.056,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.252
+   }
+  },
+  "ZECUSDT": {
+   "y2025": {
+    "bars": 105108,
+    "ret_corr": 0.9842,
+    "weex_after_binance": 0.005,
+    "binance_after_weex": -0.008,
+    "price_gap_pct": 0.0211,
+    "volume_ratio": 0.197,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": -0.067
+   },
+   "y2026": {
+    "bars": 105108,
+    "ret_corr": 0.9994,
+    "weex_after_binance": -0.003,
+    "binance_after_weex": -0.003,
+    "price_gap_pct": 0.0024,
+    "volume_ratio": 0.091,
+    "weex_qv_vs_price_x_vol": 1.0,
+    "taker_15m_corr": 0.087
+   }
+  }
+ },
+ "edges": {
+  "rvol_5m": {
+   "weex": {
+    "feature": "rvol_5m",
+    "edges": [
+     0.0001,
+     0.465,
+     0.8028,
+     0.9576,
+     1.0667,
+     1.219,
+     1.4395,
+     1.7549,
+     2.3121,
+     3.5576,
+     15956.2
+    ],
+    "by_decile": {
+     "y2025": [
+      -0.443,
+      -0.362,
+      -0.348,
+      -0.384,
+      -0.384,
+      -0.36,
+      -0.309,
+      -0.284,
+      -0.254,
+      -0.193
+     ],
+     "y2026": [
+      -0.294,
+      -0.363,
+      -0.328,
+      -0.283,
+      -0.251,
+      -0.207,
+      -0.168,
+      -0.15,
+      -0.1,
+      -0.044
+     ]
+    },
+    "rho": [
+     0.87,
+     0.96
+    ],
+    "consistent": true,
+    "direction": "higher is better"
+   },
+   "binance": {
+    "feature": "bn_rvol_5m",
+    "edges": [
+     0.1605,
+     0.9755,
+     1.2703,
+     1.537,
+     1.8202,
+     2.1321,
+     2.5129,
+     3.0088,
+     3.7415,
+     5.218,
+     123.9516
+    ],
+    "by_decile": {
+     "y2025": [
+      -0.412,
+      -0.388,
+      -0.387,
+      -0.372,
+      -0.365,
+      -0.334,
+      -0.351,
+      -0.299,
+      -0.288,
+      -0.149
+     ],
+     "y2026": [
+      -0.428,
+      -0.314,
+      -0.26,
+      -0.2,
+      -0.229,
+      -0.201,
+      -0.223,
+      -0.153,
+      -0.116,
+      -0.002
+     ]
+    },
+    "rho": [
+     0.99,
+     0.92
+    ],
+    "consistent": true,
+    "direction": "higher is better"
+   }
+  },
+  "rvol_15m": {
+   "weex": {
+    "feature": "rvol_15m",
+    "edges": [
+     0.0001,
+     0.3645,
+     0.6761,
+     0.8612,
+     0.9679,
+     1.0554,
+     1.1883,
+     1.3895,
+     1.7349,
+     2.5533,
+     6713.02
+    ],
+    "by_decile": {
+     "y2025": [
+      -0.446,
+      -0.343,
+      -0.28,
+      -0.333,
+      -0.388,
+      -0.354,
+      -0.363,
+      -0.287,
+      -0.251,
+      -0.275
+     ],
+     "y2026": [
+      -0.305,
+      -0.345,
+      -0.27,
+      -0.346,
+      -0.236,
+      -0.209,
+      -0.214,
+      -0.146,
+      -0.088,
+      -0.04
+     ]
+    },
+    "rho": [
+     0.58,
+     0.9
+    ],
+    "consistent": true,
+    "direction": "higher is better"
+   },
+   "binance": {
+    "feature": "bn_rvol_15m",
+    "edges": [
+     0.1278,
+     0.6622,
+     0.8602,
+     1.0441,
+     1.2365,
+     1.4547,
+     1.7069,
+     2.0407,
+     2.5359,
+     3.436,
+     70.1129
+    ],
+    "by_decile": {
+     "y2025": [
+      -0.336,
+      -0.309,
+      -0.379,
+      -0.383,
+      -0.367,
+      -0.396,
+      -0.362,
+      -0.297,
+      -0.297,
+      -0.247
+     ],
+     "y2026": [
+      -0.415,
+      -0.295,
+      -0.305,
+      -0.192,
+      -0.182,
+      -0.226,
+      -0.165,
+      -0.252,
+      -0.09,
+      0.001
+     ]
+    },
+    "rho": [
+     0.49,
+     0.83
+    ],
+    "consistent": false,
+    "direction": "higher is better"
+   }
+  },
+  "taker_15m": {
+   "weex": {
+    "feature": "taker_15m",
+    "edges": [
+     0.0001,
+     0.4404,
+     0.4812,
+     0.5038,
+     0.5218,
+     0.5396,
+     0.559,
+     0.5818,
+     0.6119,
+     0.6683,
+     1.0
+    ],
+    "by_decile": {
+     "y2025": [
+      -0.415,
+      -0.344,
+      -0.421,
+      -0.37,
+      -0.297,
+      -0.327,
+      -0.302,
+      -0.292,
+      -0.303,
+      -0.319
+     ],
+     "y2026": [
+      -0.229,
+      -0.198,
+      -0.158,
+      -0.203,
+      -0.218,
+      -0.214,
+      -0.164,
+      -0.236,
+      -0.243,
+      -0.173
+     ]
+    },
+    "rho": [
+     0.68,
+     -0.16
+    ],
+    "consistent": false,
+    "direction": "higher is better"
+   },
+   "binance": {
+    "feature": "bn_taker_15m",
+    "edges": [
+     0.1535,
+     0.4827,
+     0.5081,
+     0.5257,
+     0.5408,
+     0.5555,
+     0.5704,
+     0.5869,
+     0.6074,
+     0.6378,
+     0.8788
+    ],
+    "by_decile": {
+     "y2025": [
+      -0.39,
+      -0.368,
+      -0.302,
+      -0.33,
+      -0.323,
+      -0.339,
+      -0.306,
+      -0.313,
+      -0.348,
+      -0.387
+     ],
+     "y2026": [
+      -0.219,
+      -0.134,
+      -0.128,
+      -0.158,
+      -0.221,
+      -0.262,
+      -0.175,
+      -0.186,
+      -0.223,
+      -0.292
+     ]
+    },
+    "rho": [
+     0.08,
+     -0.62
+    ],
+    "consistent": false,
+    "direction": "lower is better"
+   }
+  },
+  "cvd_norm": {
+   "weex": {
+    "feature": "cvd_norm",
+    "edges": [
+     -1.5021,
+     -0.0837,
+     -0.0284,
+     0.001,
+     0.024,
+     0.0465,
+     0.0718,
+     0.1023,
+     0.145,
+     0.2309,
+     1.5068
+    ],
+    "by_decile": {
+     "y2025": [
+      -0.356,
+      -0.355,
+      -0.353,
+      -0.333,
+      -0.343,
+      -0.326,
+      -0.319,
+      -0.334,
+      -0.292,
+      -0.373
+     ],
+     "y2026": [
+      -0.144,
+      -0.21,
+      -0.173,
+      -0.207,
+      -0.223,
+      -0.208,
+      -0.217,
+      -0.199,
+      -0.24,
+      -0.195
+     ]
+    },
+    "rho": [
+     0.36,
+     -0.33
+    ],
+    "consistent": false,
+    "direction": "higher is better"
+   },
+   "binance": {
+    "feature": "bn_cvd_norm",
+    "edges": [
+     -0.9072,
+     -0.0453,
+     -0.0118,
+     0.0113,
+     0.0308,
+     0.0497,
+     0.0692,
+     0.0915,
+     0.1192,
+     0.1606,
+     0.6674
+    ],
+    "by_decile": {
+     "y2025": [
+      -0.394,
+      -0.33,
+      -0.346,
+      -0.329,
+      -0.318,
+      -0.291,
+      -0.309,
+      -0.334,
+      -0.333,
+      -0.43
+     ],
+     "y2026": [
+      -0.238,
+      -0.146,
+      -0.198,
+      -0.149,
+      -0.184,
+      -0.177,
+      -0.19,
+      -0.244,
+      -0.187,
+      -0.291
+     ]
+    },
+    "rho": [
+     -0.02,
+     -0.41
+    ],
+    "consistent": false,
+    "direction": "lower is better"
+   }
+  },
+  "funding_8h": {
+   "weex": {
+    "feature": "funding_8h",
+    "edges": [
+     -0.6071,
+     -0.0123,
+     -0.0051,
+     -0.0004,
+     0.0027,
+     0.0057,
+     0.0095,
+     0.01,
+     0.3333
+    ],
+    "by_decile": {
+     "y2025": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+     ],
+     "y2026": [
+      -0.23,
+      -0.152,
+      -0.289,
+      -0.098,
+      -0.276,
+      -0.261,
+      0.358,
+      -0.201
+     ]
+    },
+    "rho": [
+     null,
+     0.21
+    ],
+    "consistent": false,
+    "direction": "higher is better"
+   },
+   "binance": {
+    "feature": "bn_funding_8h",
+    "edges": [
+     -0.6098,
+     -0.0089,
+     -0.0019,
+     0.0021,
+     0.0058,
+     0.0098,
+     0.01,
+     0.01,
+     0.01,
+     0.3337
+    ],
+    "by_decile": {
+     "y2025": [
+      -0.453,
+      -0.297,
+      -0.364,
+      -0.339,
+      -0.362,
+      -0.301,
+      -0.248,
+      -0.369,
+      -0.264
+     ],
+     "y2026": [
+      -0.192,
+      -0.228,
+      -0.171,
+      -0.251,
+      -0.196,
+      -0.253,
+      0.018,
+      -0.189,
+      -0.281
+     ]
+    },
+    "rho": [
+     0.43,
+     -0.17
+    ],
+    "consistent": false,
+    "direction": "higher is better"
+   }
+  }
+ },
+ "conditions": {
+  "rvol_5m >= 3": {
+   "y2025": {
+    "weex_pass": {
+     "n": 4560,
+     "tp_first": 0.389,
+     "fwd_4h": 0.19,
+     "mfe_4h": 1.615,
+     "trade_n": 4513,
+     "trade_r": -0.208,
+     "trade_sum_r": -937.6
+    },
+    "binance_pass": {
+     "n": 9438,
+     "tp_first": 0.37,
+     "fwd_4h": 0.108,
+     "mfe_4h": 1.466,
+     "trade_n": 9378,
+     "trade_r": -0.25,
+     "trade_sum_r": -2344.9
+    }
+   },
+   "y2026": {
+    "weex_pass": {
+     "n": 3620,
+     "tp_first": 0.423,
+     "fwd_4h": 0.389,
+     "mfe_4h": 1.811,
+     "trade_n": 3541,
+     "trade_r": -0.046,
+     "trade_sum_r": -161.5
+    },
+    "binance_pass": {
+     "n": 9127,
+     "tp_first": 0.415,
+     "fwd_4h": 0.31,
+     "mfe_4h": 1.632,
+     "trade_n": 8995,
+     "trade_r": -0.086,
+     "trade_sum_r": -776.6
+    }
+   }
+  },
+  "cvd > 0": {
+   "y2025": {
+    "weex_pass": {
+     "n": 23594,
+     "tp_first": 0.349,
+     "fwd_4h": 0.039,
+     "mfe_4h": 1.27,
+     "trade_n": 23541,
+     "trade_r": -0.333,
+     "trade_sum_r": -7830.3
+    },
+    "binance_pass": {
+     "n": 25480,
+     "tp_first": 0.356,
+     "fwd_4h": 0.051,
+     "mfe_4h": 1.263,
+     "trade_n": 25429,
+     "trade_r": -0.329,
+     "trade_sum_r": -8370.8
+    }
+   },
+   "y2026": {
+    "weex_pass": {
+     "n": 19482,
+     "tp_first": 0.393,
+     "fwd_4h": 0.15,
+     "mfe_4h": 1.382,
+     "trade_n": 19370,
+     "trade_r": -0.213,
+     "trade_sum_r": -4130.2
+    },
+    "binance_pass": {
+     "n": 20537,
+     "tp_first": 0.389,
+     "fwd_4h": 0.166,
+     "mfe_4h": 1.414,
+     "trade_n": 20417,
+     "trade_r": -0.205,
+     "trade_sum_r": -4176.5
+    }
+   }
+  },
+  "taker >= 0.55": {
+   "y2025": {
+    "weex_pass": {
+     "n": 15187,
+     "tp_first": 0.355,
+     "fwd_4h": 0.047,
+     "mfe_4h": 1.282,
+     "trade_n": 15141,
+     "trade_r": -0.307,
+     "trade_sum_r": -4654.3
+    },
+    "binance_pass": {
+     "n": 17560,
+     "tp_first": 0.352,
+     "fwd_4h": 0.058,
+     "mfe_4h": 1.208,
+     "trade_n": 17544,
+     "trade_r": -0.336,
+     "trade_sum_r": -5900.1
+    }
+   },
+   "y2026": {
+    "weex_pass": {
+     "n": 12015,
+     "tp_first": 0.391,
+     "fwd_4h": 0.156,
+     "mfe_4h": 1.392,
+     "trade_n": 11942,
+     "trade_r": -0.2,
+     "trade_sum_r": -2394.1
+    },
+    "binance_pass": {
+     "n": 15328,
+     "tp_first": 0.375,
+     "fwd_4h": 0.103,
+     "mfe_4h": 1.328,
+     "trade_n": 15247,
+     "trade_r": -0.23,
+     "trade_sum_r": -3508.7
+    }
+   }
+  }
+ },
+ "systems": {
+  "Current system (WEEX measures)": {
+   "y2025": {
+    "n": 345,
+    "R": 11.2,
+    "avgR": 0.032,
+    "win": 0.41,
+    "pf": 1.23,
+    "net": 701,
+    "maxdd_R": 15.3
+   },
+   "y2026": {
+    "n": 242,
+    "R": 55.1,
+    "avgR": 0.228,
+    "win": 0.44,
+    "pf": 1.57,
+    "net": 1200,
+    "maxdd_R": 13.9
+   }
+  },
+  "CVD from Binance": {
+   "y2025": {
+    "n": 329,
+    "R": 9.6,
+    "avgR": 0.029,
+    "win": 0.41,
+    "pf": 1.24,
+    "net": 682,
+    "maxdd_R": 18.6
+   },
+   "y2026": {
+    "n": 245,
+    "R": 30.9,
+    "avgR": 0.126,
+    "win": 0.4,
+    "pf": 1.35,
+    "net": 811,
+    "maxdd_R": 14.1
+   }
+  },
+  "5m volume spike from Binance": {
+   "y2025": {
+    "n": 416,
+    "R": 10.0,
+    "avgR": 0.024,
+    "win": 0.43,
+    "pf": 1.14,
+    "net": 530,
+    "maxdd_R": 22.9
+   },
+   "y2026": {
+    "n": 328,
+    "R": 22.8,
+    "avgR": 0.07,
+    "win": 0.4,
+    "pf": 1.27,
+    "net": 811,
+    "maxdd_R": 17.0
+   }
+  },
+  "CVD + volume spike from Binance": {
+   "y2025": {
+    "n": 395,
+    "R": 5.6,
+    "avgR": 0.014,
+    "win": 0.42,
+    "pf": 1.13,
+    "net": 457,
+    "maxdd_R": 30.3
+   },
+   "y2026": {
+    "n": 329,
+    "R": 15.5,
+    "avgR": 0.047,
+    "win": 0.39,
+    "pf": 1.22,
+    "net": 696,
+    "maxdd_R": 18.4
+   }
+  },
+  "Current + Binance taker >= 0.55": {
+   "y2025": {
+    "n": 199,
+    "R": 11.9,
+    "avgR": 0.06,
+    "win": 0.42,
+    "pf": 1.23,
+    "net": 378,
+    "maxdd_R": 24.9
+   },
+   "y2026": {
+    "n": 173,
+    "R": 43.0,
+    "avgR": 0.249,
+    "win": 0.42,
+    "pf": 1.62,
+    "net": 942,
+    "maxdd_R": 9.0
+   }
+  },
+  "Funding from Binance (testable in both years)": {
+   "y2025": {
+    "n": 318,
+    "R": 16.5,
+    "avgR": 0.052,
+    "win": 0.41,
+    "pf": 1.27,
+    "net": 747,
+    "maxdd_R": 15.3
+   },
+   "y2026": {
+    "n": 240,
+    "R": 55.5,
+    "avgR": 0.231,
+    "win": 0.44,
+    "pf": 1.57,
+    "net": 1203,
+    "maxdd_R": 13.9
+   }
+  },
+  "All flow + funding from Binance": {
+   "y2025": {
+    "n": 353,
+    "R": 8.3,
+    "avgR": 0.023,
+    "win": 0.42,
+    "pf": 1.14,
+    "net": 455,
+    "maxdd_R": 30.6
+   },
+   "y2026": {
+    "n": 327,
+    "R": 15.9,
+    "avgR": 0.049,
+    "win": 0.39,
+    "pf": 1.22,
+    "net": 699,
+    "maxdd_R": 18.4
+   }
+  }
+ }
+}
