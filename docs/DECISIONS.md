@@ -138,6 +138,17 @@ Shorts lose under both regime rules (Ignition short −0.24R over 74 trades; Coi
 
 **Study result (2026-09-30, 327 coins, 142 ATH + 341 52W breaks since 2017):** after 30 days the median ATH break was +1.1% (vs −4.8% for any day, same coins) and the median 52W break −5.8%; averages are far higher (+39.8% / +6.5%) because a few coins ran hundreds of percent, mostly in 2021. Breaks worked in bull years (2021) and failed otherwise (2024–2026 medians −10% to −22% at 30 days); top-100 coins did better than small caps; breaks while BTC was below its 200-day average did badly. About 40% closed back below the old high within 3 days.
 
+## RISK_OFF longs test (2026-09-30)
+
+`signals.suppress_longs_in_risk_off` (default **true** = unchanged). 20x · Policy S, $1,000, same 40 coins; OI conditions off (no history); the older year also has the funding filter off (WEEX serves ~1 year of funding) - the recent year replayed without it changed little (+0.13R → +0.11R), so the comparison holds.
+
+| Year | Held back (now) | Allowed | RISK_OFF longs alone |
+|---|---|---|---|
+| Oct 2025 – Sep 2026 (found here) | 111 trades, +0.13R, +$228 | 127 trades, +0.17R, +$404 | 16 trades, +0.46R |
+| Oct 2024 – Sep 2025 (out of sample) | 207 trades, −0.12R, −$263 | 219 trades, −0.09R, −$204 | 12 trades, +0.43R |
+
+Both years: RISK_OFF longs +0.45R over 28 trades (bootstrap P(edge ≤ 0) ≈ 4%). **The whole model lost money in the older year** (−0.12R over 207 trades) - its edge depends on the period.
+
 ## Threshold changes (your decisions)
 
 | Date | Change | Why |
