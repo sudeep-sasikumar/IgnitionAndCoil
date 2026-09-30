@@ -97,6 +97,8 @@ td.left, th.left { text-align: left; }
 .badge.suppressed, .badge.console, .badge.failed { background: var(--amber-bg); color: var(--amber); }
 .badge.IGNITION { background: rgba(240,180,41,.12); color: var(--amber); }
 .badge.COIL { background: rgba(77,208,225,.12); color: var(--cyan); }
+.badge.ATH { background: rgba(240,180,41,.16); color: var(--amber); }
+.badge.H52 { background: var(--blue-bg); color: var(--blue); }
 .scorebar { display: inline-block; width: 44px; height: 6px; background: var(--panel-2); border-radius: 3px; margin-left: 6px; vertical-align: middle; overflow: hidden; }
 .scorebar > i { display: block; height: 100%; background: var(--blue); }
 .scorebar.hi > i { background: var(--green); }

@@ -26,7 +26,7 @@ log = logging.getLogger("web")
 STATIC = Path(__file__).resolve().parent / "static"
 SYMBOL_RE = re.compile(r"^[A-Z0-9]{2,30}$")
 SIGNAL_RE = re.compile(r"^S-\d{1,9}$")
-PAGES = ("/", "/settings", "/signals", "/trades", "/trades/new", "/trades/close-all", "/stats")
+PAGES = ("/", "/settings", "/signals", "/trades", "/trades/new", "/trades/close-all", "/stats", "/highs")
 TRADE_RE = re.compile(r"^M-\d{1,9}$")
 PUBLIC = ("/login", "/static/app.css", "/static/favicon.svg", "/static/login.js")
 CSP = ("default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; "
@@ -267,6 +267,12 @@ def create_app(eng, hub: WebHub) -> FastAPI:
     async def api_stats(days: int = 0):
         since = 0 if days <= 0 else eng.clock.now_ms() - days * 86_400_000
         return stats_service.compute(eng.db, since)
+
+    @app.get("/api/highs")
+    async def api_highs():
+        if eng.highs is None:
+            return {"disabled": True}
+        return await asyncio.to_thread(eng.highs.view)
 
     @app.get("/api/symbols")
     async def api_symbols():

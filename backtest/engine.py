@@ -105,6 +105,8 @@ def regime_block(sig, regime, cfg) -> str | None:
     if sig.side == "SHORT":
         ok = state == RISK_OFF if cfg.short.regime_rule == "risk_off" else state != RISK_ON
         return None if ok else f"regime_{state.lower()}"
+    if not cfg.signals.get("suppress_longs_in_risk_off", True):
+        return None
     return "risk_off" if "RISK_OFF" in sig.tags or state == RISK_OFF else None
 
 

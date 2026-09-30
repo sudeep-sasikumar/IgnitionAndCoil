@@ -166,6 +166,23 @@ This writes CSV files to `var\exports\` (`--what manual|paper|both`). The databa
 
 ---
 
+### Highs tab (52-week and all-time highs)
+
+The **Highs** tab lists coins in the CoinGecko top 2,000 that broke their **all-time high (ATH)** or their **52-week high (52W)**. Telegram sends one message per scan listing the new breaks (🚀 ATH, 📈 52W).
+
+- **What counts as a break:** price trades above a high that is at least **7 days old**. A coin already trending at new highs every day counts once, not every scan. An ATH break is shown as ATH only.
+- **Left out:** stablecoins, plus wrapped, bridged and staked copies of other coins.
+- **Data:** CoinGecko's free public API; every 10 minutes it fetches all 2,000 coins' prices and ATHs.
+- **Warm-up:**
+  - The first scan only records each coin's highs.
+  - ATH breaks are detected from the second scan on.
+  - The 52-week high needs a year of prices per coin. The free API loads about 5 coins a minute, so all 2,000 take roughly 7 hours; the tab shows the progress.
+  - A free CoinGecko Demo key (`COINGECKO_DEMO_API_KEY` in `.env` or in Docker Manager) makes loading about 5× faster.
+- **Study:** "What happened after past breaks" is a study of every such break since 2017, from Binance daily prices (CoinGecko's free history only goes back a year).
+  - Re-run it with `.venv\Scripts\python.exe -m highs.study`, which takes a few minutes.
+  - The tab shows a snapshot until you do.
+- **Settings:** the `highs:` section of `config.yaml`, e.g. `alert_min_volume_usd` to skip illiquid coins in Telegram.
+
 ## 5. Your trading model: 20x · Policy S
 
 Chosen on 2026-09-28 from a one-year walk-forward study (full details in `docs\DECISIONS.md`):

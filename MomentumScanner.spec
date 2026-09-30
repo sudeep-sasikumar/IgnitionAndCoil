@@ -9,7 +9,7 @@ from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 hidden = (collect_submodules("uvicorn") + collect_submodules("websockets")
           + collect_submodules("sqlalchemy.dialects.sqlite") + ["tzdata"])
-datas = [("web/static", "web/static")] + collect_data_files("tzdata")
+datas = [("web/static", "web/static"), ("highs/study_snapshot.json", "highs")] + collect_data_files("tzdata")
 
 a = Analysis(
     ["main.py"],

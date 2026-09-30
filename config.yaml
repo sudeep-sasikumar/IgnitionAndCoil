@@ -181,6 +181,7 @@ signals:
   disabled_conditions: []       # e.g. [oi] when OI history is unavailable (backtests)
   watch_alerts: true
   blackout_alerts: false
+  suppress_longs_in_risk_off: true   # long ENTRY alerts are held back while the regime is RISK_OFF
   # Times in London time. Example:
   # - {start: "2026-10-14 13:20", end: "2026-10-14 13:50", label: "US CPI"}
   blackout_windows: []
@@ -247,6 +248,25 @@ dashboard:
   extra_allowed_hosts: []       # extra Host names accepted (e.g. your VPS domain)
   price_push_s: 2               # live price updates to the browser
   chart_bars_15m: 300
+
+highs:
+  # "Highs" tab: CoinGecko top coins breaking their 52-week high or all-time high, with a Telegram
+  # alert per break. Free public CoinGecko API (no key needed; an optional free Demo key in .env,
+  # COINGECKO_DEMO_API_KEY, allows faster history loading). Signals only, like the rest of the app.
+  enabled: true
+  top_n: 2000                   # CoinGecko market-cap rank
+  scan_min: 10                  # prices + ATH for all coins: 8 requests per scan
+  api_base: https://api.coingecko.com/api/v3
+  calls_per_min: 5              # keyless CoinGecko allows roughly 5-15/min; 25 is safe with a Demo key
+  min_high_age_days: 7          # a break counts only if the old high is at least this old: a fresh
+                                #   breakout, not a trend printing new highs every day
+  min_history_days: 300         # 52-week high needs this much price history (younger coins: ATH only)
+  show_days: 14                 # breaks listed on the Highs tab
+  telegram: true
+  alert_min_volume_usd: 0       # leave coins trading less than this (24h, USD) out of Telegram (0 = all)
+  max_lines_per_alert: 20
+  exclude_name_keywords: [wrapped, bridged, staked, restaked, "liquid staking", tokenized]
+  study_file: highs_study.json  # written by: python -m highs.study (in data_dir)
 
 reminders:                      # used from M4 (journal); editable in Settings
   bedtime_reminder: "23:30"     # London time

@@ -124,6 +124,20 @@ Your spec says "Long-only for now". You chose: build shorts **backtest-first** (
 
 Shorts lose under both regime rules (Ignition short −0.24R over 74 trades; Coil short +0.09R over 17). **Kept off.** Side finding: longs held back in RISK_OFF made +0.46R over 16 trades in the year (+$176) - the RISK_OFF block cost money in both windows; small sample, not changed.
 
+## Highs tab (2026-09-30)
+
+| Topic | Decision | Why |
+|---|---|---|
+| Data (live) | CoinGecko free public API (keyless; optional free Demo key `COINGECKO_DEMO_API_KEY`, header `x-cg-demo-api-key`). `/coins/markets` (250/page, 8 pages for 2,000) every 10 min; `/coins/{id}/ohlc?days=365` (4-day candles) once per coin for the 52-week high. Endpoints checked in the docs and live. Paced to `highs.calls_per_min` (5; keyless allowed ~4 quick calls before a 429 in testing), Retry-After honoured. | You asked for CoinGecko top 2,000; free, no paid plan. |
+| ATH | CoinGecko's own `ath` / `ath_date` (full history). Break = a higher ATH than last seen. | CoinGecko computes it from full history, which the free API can't give us. |
+| 52-week high | Highest high of the last 365 days from the OHLC candles plus our own daily observations (max of price and `high_24h`). Break = price or 24h high above it. Needs 300 days of history (younger coins: ATH only). | Candle highs, not daily snapshots, so wicks count as the high. |
+| Fresh-break rule | The old high must be ≥ 7 days old (`min_high_age_days`); an ATH break is reported only as ATH. First sighting of a coin never alerts. | One alert per breakout, not one per scan while it trends. |
+| Exclusions | Stablecoins (the universe list) and names containing wrapped / bridged / staked / restaked / liquid staking / tokenized. | Copies of other coins. |
+| Alerts | One Telegram message per scan with all new breaks (split after 20 lines), deduplicated per event, outside the ENTRY hourly cap. `alert_min_volume_usd: 0` (all coins) - raise it to skip illiquid ones. | Top 2,000 includes very thin coins; left to you. |
+| Study | `python -m highs.study`: Binance spot daily candles (free public market data, `data-api.binance.vision`), because CoinGecko's free API only serves 365 days (error 10012 beyond). Close-based breaks, no lookahead, same 7-day rule; ATH events only for coins whose Binance history holds their real ATH (CoinGecko ATH within 10%). A snapshot ships in `highs/study_snapshot.json` for machines that haven't run it. | Needs years of history before and after each break. |
+
+**Study result (2026-09-30, 327 coins, 142 ATH + 341 52W breaks since 2017):** after 30 days the median ATH break was +1.1% (vs −4.8% for any day, same coins) and the median 52W break −5.8%; averages are far higher (+39.8% / +6.5%) because a few coins ran hundreds of percent, mostly in 2021. Breaks worked in bull years (2021) and failed otherwise (2024–2026 medians −10% to −22% at 30 days); top-100 coins did better than small caps; breaks while BTC was below its 200-day average did badly. About 40% closed back below the old high within 3 days.
+
 ## Threshold changes (your decisions)
 
 | Date | Change | Why |

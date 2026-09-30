@@ -106,5 +106,5 @@ def load_config(path: str | Path | None = None) -> Config:
 
 def load_env() -> dict[str, str]:
     load_dotenv(ROOT / ".env")
-    keys = ("TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "DASHBOARD_PASSWORD")
+    keys = ("TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "DASHBOARD_PASSWORD", "COINGECKO_DEMO_API_KEY")
     return {k: os.environ.get(k, "") for k in keys}

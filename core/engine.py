@@ -66,6 +66,10 @@ class Engine:
         env = load_env()
         self.tg = Telegram(cfg, env["TELEGRAM_BOT_TOKEN"], env["TELEGRAM_CHAT_ID"], self.db)
         self.tg.on_command = self.handle_command
+        self.highs = None
+        if cfg.get("highs") and cfg.highs.get("enabled"):
+            from highs.service import HighsService
+            self.highs = HighsService(self)
         self.signals = SignalEngine(cfg)
         self.brackets: dict[str, list[Bracket]] = {}
         self.features: dict[str, Features] = {}
@@ -296,7 +300,8 @@ class Engine:
     def _suppression(self, sig: Signal, sent_last_hour: int) -> str | None:
         if self.paused:
             return "paused"
-        if "RISK_OFF" in sig.tags or (self.regime and self.regime.state == RISK_OFF):
+        if self.cfg.signals.get("suppress_longs_in_risk_off", True) and (
+                "RISK_OFF" in sig.tags or (self.regime and self.regime.state == RISK_OFF)):
             return "risk_off"
         if any(t.startswith("BLACKOUT") for t in sig.tags) and not self.cfg.signals.blackout_alerts:
             return "blackout"
@@ -589,6 +594,10 @@ class Engine:
             lines = await self.journal.load_and_catch_up()
             await self.trading.back_online_summary(lines)
             await self.ws.set_symbols(self.tracked)
+            if self.highs:
+                await asyncio.to_thread(self.highs.load)
+                self._tasks += [asyncio.create_task(self.highs.scan_loop(), name="highs_scan"),
+                                asyncio.create_task(self.highs.history_loop(), name="highs_history")]
             self._tasks += [asyncio.create_task(c(), name=c.__name__) for c in (
                 self.bar_loop, self.universe_loop, self.oi_loop, self.premium_loop,
                 self.clock_loop, self.watchdog_loop, self.tg.poll_commands, self.trading.track_loop,
@@ -599,4 +608,6 @@ class Engine:
                 t.cancel()
             await self.ws.stop()
             await self.rest.close()
+            if self.highs:
+                await self.highs.cg.close()
             await self.tg.close()

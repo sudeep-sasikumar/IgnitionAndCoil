@@ -22,6 +22,7 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
       DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:-}   # required: without it the dashboard stays off
+      COINGECKO_DEMO_API_KEY: ${COINGECKO_DEMO_API_KEY:-}   # optional (Highs tab loads history faster)
       # login is enforced because bind_host is not localhost; cookies only over HTTPS
       IC_OVERRIDES: "dashboard.bind_host=0.0.0.0;dashboard.open_browser=false;dashboard.cookie_secure=true;dashboard.base_url=https://${DOMAIN:-srv1479428.hstgr.cloud}"
     volumes:
