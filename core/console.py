@@ -59,6 +59,6 @@ def table(rows: list[Features], scan: dict, top_n: int) -> str:
             _f(r.oi_chg_1h, "+.2f", 7), _f(r.oi_chg_4h, "+.2f", 7), _f(fund, "+.4f", 7),
             _f(r.taker_buy_ratio_15m, ".2f", 7), _f(r.cvd_slope_1h_norm, "+.2f", 7), _f(r.deep_wicks_24h, "d", 7),
         ]))
-    lines.append("(ENTRY/WATCH first, then by score; pass = conditions met, I=Ignition C=Coil; room d = price "
+    lines.append("(ENTRY/WATCH first, then by score; pass = active conditions met, I=Ignition C=Coil; room d = price "
                  "discovery; * = warming up; oi% blank until enough OI history is recorded)")
     return "\n".join(lines)

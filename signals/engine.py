@@ -172,7 +172,7 @@ class SignalEngine:
             ce = self.coil.eval_entry(sym, f, b15, hr, self.disabled)
             if ce:
                 evals.append(ce)
-                coil_entry_conds = [vars(c).copy() for c in ce.conds]
+                coil_entry_conds = self._cond_dicts(ce.conds)
 
         best = None
         signals: list[Signal] = []
@@ -195,14 +195,20 @@ class SignalEngine:
 
         ev, score, breakdown = best
         state = ENTRY if signals else WATCH if sym in self.coil.watches else SKIP
-        row = ScanRow(symbol=sym, price=f.price, state=state, score=score, setup=ev.setup, n_pass=ev.n_pass,
-                      n_conds=len(ev.conds), headroom_pct=hr.pct, price_discovery=hr.price_discovery,
+        active = [c for c in ev.conds if not off(c, self.disabled)]   # switched-off checks don't count
+        row = ScanRow(symbol=sym, price=f.price, state=state, score=score, setup=ev.setup,
+                      n_pass=sum(1 for c in active if c.passed), n_conds=len(active),
+                      headroom_pct=hr.pct, price_discovery=hr.price_discovery,
                       features=f, watch=self.coil.watches.get(sym),
                       failed=[c.name for c in ev.conds if not c.passed and not off(c, self.disabled)],
-                      ignition_conds=[vars(c).copy() for c in evals[0].conds],
-                      watch_conds=[vars(c).copy() for c in watch_conds],
+                      ignition_conds=self._cond_dicts(evals[0].conds),
+                      watch_conds=self._cond_dicts(watch_conds),
                       coil_entry_conds=coil_entry_conds, breakdown=breakdown)
         return row, signals, self.coil.watches.get(sym) if new_watch else None
+
+    def _cond_dicts(self, conds) -> list[dict]:
+        """Conditions for display/backtest funnels; "off" = switched off in signals.disabled_conditions."""
+        return [{**vars(c), "off": off(c, self.disabled)} for c in conds]
 
     def _evaluate_short(self, sym: str, as_of: int, f: Features, b5: BarArrays, b15: BarArrays, b1h: BarArrays,
                         lm: LevelMap, regime: Regime | None, rstate: str, brackets: list[Bracket] | None,

@@ -127,7 +127,7 @@ const COLS = [
   { key: "state", label: "State", fmt: (r) => h("span", { class: `badge ${r.state}`, text: r.state }) },
   { key: "score", label: "Score", fmt: (r) => h("span", { class: "num" }, String(r.score),
       h("span", { class: "scorebar" + (r.score >= 70 ? " hi" : "") }, h("i", { style: `width:${Math.max(0, Math.min(100, r.score))}%` }))) },
-  { key: "n_pass", label: "Pass", title: "Conditions met for the best setup", fmt: (r) => h("span", { class: "num muted", text: `${r.n_pass}/${r.n_conds} ${r.setup === "COIL" ? "C" : "I"}` }) },
+  { key: "n_pass", label: "Pass", title: "Active conditions met for the best setup (switched-off ones not counted)", fmt: (r) => h("span", { class: "num muted", text: `${r.n_pass}/${r.n_conds} ${r.setup === "COIL" ? "C" : "I"}` }) },
   { key: "ret_1h", label: "1h %", fmt: (r) => num(r.ret_1h, sgn(r.ret_1h), cls(r.ret_1h, (v) => v >= 1 && v <= 5, (v) => v < 0)) },
   { key: "rvol_5m", label: "RVOL 5m", fmt: (r) => num(r.rvol_5m, fx(r.rvol_5m, 1) + "x", cls(r.rvol_5m, (v) => v >= 3)) },
   { key: "rvol_15m", label: "RVOL 15m", fmt: (r) => num(r.rvol_15m, fx(r.rvol_15m, 1) + "x", cls(r.rvol_15m, (v) => v >= 2)) },
@@ -377,6 +377,8 @@ function condsCard(title, conds, disabledNote) {
   return h("div", { class: "card" }, h("h3", { text: title }),
     h("ul", { class: "conds" }, conds.map((c) => {
       const st = c.passed === true ? "ok" : c.passed === false ? "no" : "na";
+      if (c.off) return h("li", { class: "off", title: "Switched off in config.yaml (signals.disabled_conditions): not required" },
+        h("span", {}, h("span", { class: "mark", text: "·" }), c.name + " (off)"), h("span", { class: "num muted", text: c.value }));
       return h("li", { class: st }, h("span", {}, h("span", { class: "mark", text: st === "ok" ? "✓" : st === "no" ? "✗" : "–" }), c.name),
         h("span", { class: "num muted", text: c.value }));
     })));

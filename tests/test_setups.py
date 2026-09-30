@@ -272,3 +272,16 @@ def test_single_conditions_can_be_disabled_by_key(cfg):
     assert eval_ignition(below_vwap, breakout_bars(), ROOM, cfg, {"ignition.vwap"}).hard_pass
     assert not eval_ignition(below_vwap, breakout_bars(), ROOM, cfg, {"ignition.ema"}).hard_pass
     assert all(c.key.startswith("ignition.") for c in ev.conds)
+
+
+def test_pass_count_ignores_switched_off_conditions(cfg):
+    import copy
+    from core.config import Config
+    d = copy.deepcopy(cfg.to_dict())
+    d["signals"]["disabled_conditions"] = ["ignition.vwap", "ignition.taker"]
+    c2 = Config(d, cfg.path)
+    row, _, _ = _eval(SignalEngine(c2), c2, 1_000_000 * M5 + M5, f=features(vwap_24h=103.0))
+    total = len(row.ignition_conds)
+    assert row.setup == IGNITION and row.n_conds == total - 2
+    offs = [x["key"] for x in row.ignition_conds if x["off"]]
+    assert sorted(offs) == ["ignition.taker", "ignition.vwap"] and "close > VWAP24h" not in row.failed
