@@ -115,6 +115,15 @@ Your spec says "Long-only for now". You chose: build shorts **backtest-first** (
 | Universe | Unchanged, including the lower-wick filter (a short-specific wick filter would change the long universe). | |
 | Backtest tooling | `--end 'YYYY-MM-DD HH:MM'` replays an earlier window exactly; cache files are written atomically so backtests can run side by side. | |
 
+**Result (2026-09-30), 20x · Policy S, $1,000, $5M+ coins, alerts that would have been sent:**
+
+| Period | Longs | Shorts, RISK_OFF only | Shorts, RISK_OFF + NEUTRAL |
+|---|---|---|---|
+| 90 days (54 coins) | 65 trades, −0.02R, +$33 | 17 trades, +0.06R, −$2 | 24 trades, −0.03R, −$32 |
+| 365 days (top 40 coins) | 111 trades, +0.13R, +$228 | 77 trades, −0.17R, −$198 | 89 trades, −0.18R, −$244 |
+
+Shorts lose under both regime rules (Ignition short −0.24R over 74 trades; Coil short +0.09R over 17). **Kept off.** Side finding: longs held back in RISK_OFF made +0.46R over 16 trades in the year (+$176) - the RISK_OFF block cost money in both windows; small sample, not changed.
+
 ## Threshold changes (your decisions)
 
 | Date | Change | Why |
