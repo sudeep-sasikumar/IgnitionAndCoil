@@ -28,6 +28,7 @@ from features.compute import MarketInputs, compute_features
 from paper.book import leg_kind
 from plan.pnl import Leg, entry_fill, pnl_usd
 from signals.engine import SignalEngine
+from signals.setups import off
 from core.engine import default_policy_missing
 from signals.regime import RISK_OFF, RISK_ON, compute_regime
 
@@ -61,7 +62,7 @@ class Funnel:
         g["n"] += 1
         failing = []
         for c in conds:
-            if c["group"] in disabled or c["passed"]:
+            if off(c, disabled) or c["passed"]:
                 g["pass"][c["name"]] += 1
             else:
                 failing.append(c["name"])

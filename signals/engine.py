@@ -20,7 +20,7 @@ from plan.trade_plan import TradePlan, build_plan
 from signals.regime import RISK_OFF, Regime
 from signals.score import compute_score
 from signals.setups import (COIL, COIL_SHORT, IGNITION, IGNITION_SHORT, LONG, SHORT, CoilTracker, CoilWatch,
-                            SetupEval, eval_ignition, eval_ignition_short, side_of)
+                            SetupEval, eval_ignition, eval_ignition_short, off, side_of)
 
 ENTRY, WATCH, SKIP = "ENTRY", "WATCH", "SKIP"
 
@@ -103,6 +103,7 @@ class SignalEngine:
     def __init__(self, cfg):
         self.cfg = cfg
         self.coil = CoilTracker(cfg)
+        self.coil_enabled = bool(cfg.coil.get("enabled", True))
         short = cfg.get("short")
         self.short_enabled = bool(short and short.get("enabled"))
         self.coil_short = CoilTracker(cfg, SHORT)
@@ -165,9 +166,9 @@ class SignalEngine:
         rstate = regime.state if regime else "NEUTRAL"
 
         evals: list[SetupEval] = [eval_ignition(f, b5, hr, cfg, self.disabled)]
-        watch_conds, new_watch = self.coil.update(sym, as_of, f, b1h, self.disabled)
+        watch_conds, new_watch = self.coil.update(sym, as_of, f, b1h, self.disabled) if self.coil_enabled else ([], False)
         coil_entry_conds: list[dict] = []
-        if as_of % 900_000 == 0:  # a 15m bar closed together with this 5m bar
+        if self.coil_enabled and as_of % 900_000 == 0:  # a 15m bar closed together with this 5m bar
             ce = self.coil.eval_entry(sym, f, b15, hr, self.disabled)
             if ce:
                 evals.append(ce)
@@ -197,7 +198,7 @@ class SignalEngine:
         row = ScanRow(symbol=sym, price=f.price, state=state, score=score, setup=ev.setup, n_pass=ev.n_pass,
                       n_conds=len(ev.conds), headroom_pct=hr.pct, price_discovery=hr.price_discovery,
                       features=f, watch=self.coil.watches.get(sym),
-                      failed=[c.name for c in ev.conds if not c.passed and c.group not in self.disabled],
+                      failed=[c.name for c in ev.conds if not c.passed and not off(c, self.disabled)],
                       ignition_conds=[vars(c).copy() for c in evals[0].conds],
                       watch_conds=[vars(c).copy() for c in watch_conds],
                       coil_entry_conds=coil_entry_conds, breakdown=breakdown)
@@ -211,8 +212,9 @@ class SignalEngine:
         cfg = self.cfg
         hr = headroom_down(lm, f.price, f.atr_1h_pct, cfg)
         evals = [eval_ignition_short(f, b5, hr, cfg, self.disabled)]
-        self.coil_short.update(sym, as_of, f, b1h, self.disabled)
-        if as_of % 900_000 == 0:
+        if self.coil_enabled:
+            self.coil_short.update(sym, as_of, f, b1h, self.disabled)
+        if self.coil_enabled and as_of % 900_000 == 0:
             ce = self.coil_short.eval_entry(sym, f, b15, hr, self.disabled)
             if ce:
                 evals.append(ce)

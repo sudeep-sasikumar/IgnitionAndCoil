@@ -149,6 +149,17 @@ Shorts lose under both regime rules (Ignition short −0.24R over 74 trades; Coi
 
 Both years: RISK_OFF longs +0.45R over 28 trades (bootstrap P(edge ≤ 0) ≈ 4%). **The whole model lost money in the older year** (−0.12R over 207 trades) - its edge depends on the period.
 
+## Filter combinations (2026-09-30)
+
+`python -m backtest.ablation harvest|search|report`: one replay per year through the live code records every bar where Ignition's trigger holds (close > 12h high) with each other condition's pass/fail, the score and the simulated trade; then every on/off combination is replayed with the live rules (cooldown set even for suppressed alerts, Ignition before Coil, Coil WATCH expiry/consumption, hourly cap, Policy S must fit). Checked: the current system reproduces the full backtests exactly (one same-bar/same-score tie under the hourly cap is broken by symbol instead of volume: same R, $2 different). 8,192 Ignition combinations × score 0/40/55/70, 128 Coil combinations × 4, both years (40 coins; OI untestable; funding only in the recent year). Every condition now has a key (e.g. `ignition.taker`) usable in `signals.disabled_conditions`; `coil.enabled` switches Coil off.
+
+| System (20x · Policy S, $1,000, alerts sent) | Oct 2024 – Sep 2025 | Oct 2025 – Sep 2026 |
+|---|---|---|
+| Current (all filters, Coil on) | 219 trades, −18.7R, −$204, PF 0.90, max DD 29.5R | 127 trades, +21.5R, +$404, PF 1.36, DD 12.8R |
+| **Best: Coil off; Ignition without rvol_15m, ema, ret_1h, ret_24h, taker, candle_size** | 345 trades, **+11.2R, +$701**, PF 1.23, DD 14.0R | 242 trades, **+55.1R, +$1,200**, PF 1.57, DD 13.9R |
+
+Evidence it is not luck: removing them one at a time improves both years at every step (taker, ret_24h, candle_size, ret_1h, rvol_15m, ema); single-condition neighbours of the pick stay positive in both years (only removing rvol_5m or headroom breaks it); picked on either year alone, the choice is top-1% on the other and beats the current filters there; losing months 17 → 11 of 24, monthly paired bootstrap P(no improvement) ≈ 0.5%. No Coil combination makes money in the recent year. Kept: rvol_5m, vwap, rs_1h, cvd, funding, headroom, close_pos, score ≥ 55. The pick used both years, so real results should be expected to be lower.
+
 ## Threshold changes (your decisions)
 
 | Date | Change | Why |

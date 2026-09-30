@@ -141,6 +141,7 @@ ignition:
   max_candle_atr15: 2.5
 
 coil:
+  enabled: true                 # false = no Coil WATCH / ENTRY signals at all
   max_bbw_pct: 15
   min_oi_chg_4h: 3.0
   max_abs_ret_4h: 1.5
@@ -178,7 +179,7 @@ score:
 signals:
   symbol_cooldown_min: 120
   max_alerts_per_hour: 6
-  disabled_conditions: []       # e.g. [oi] when OI history is unavailable (backtests)
+  disabled_conditions: []       # groups (e.g. [oi]) or single conditions by key (e.g. [ignition.vwap, coil.watch.trend])
   watch_alerts: true
   blackout_alerts: false
   suppress_longs_in_risk_off: false  # false = long ENTRY alerts also in RISK_OFF (2026-09-30: held back they made +0.45R over 28 trades in 2 years)

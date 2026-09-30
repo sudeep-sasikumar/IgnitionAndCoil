@@ -252,3 +252,12 @@ def test_vectorised_levels_match_reference(seed):
     b = BarArrays.from_bars(bars)
     assert swing_highs(b.h, 3, 336) == _swing_naive(b.h, 3, 336)
     assert volume_nodes(b, 336, 0.25, 3, 1.5) == pytest.approx(_nodes_naive(b, 336, 0.25, 3, 1.5))
+
+
+def test_single_conditions_can_be_disabled_by_key(cfg):
+    below_vwap = features(vwap_24h=103.0)                       # fails only "close > VWAP24h"
+    ev = eval_ignition(below_vwap, breakout_bars(), ROOM, cfg, set())
+    assert not ev.hard_pass and [c.key for c in ev.conds if not c.passed] == ["ignition.vwap"]
+    assert eval_ignition(below_vwap, breakout_bars(), ROOM, cfg, {"ignition.vwap"}).hard_pass
+    assert not eval_ignition(below_vwap, breakout_bars(), ROOM, cfg, {"ignition.ema"}).hard_pass
+    assert all(c.key.startswith("ignition.") for c in ev.conds)
