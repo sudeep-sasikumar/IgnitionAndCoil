@@ -160,6 +160,18 @@ Both years: RISK_OFF longs +0.45R over 28 trades (bootstrap P(edge ≤ 0) ≈ 4%
 
 Evidence it is not luck: removing them one at a time improves both years at every step (taker, ret_24h, candle_size, ret_1h, rvol_15m, ema); single-condition neighbours of the pick stay positive in both years (only removing rvol_5m or headroom breaks it); picked on either year alone, the choice is top-1% on the other and beats the current filters there; losing months 17 → 11 of 24, monthly paired bootstrap P(no improvement) ≈ 0.5%. No Coil combination makes money in the recent year. Kept: rvol_5m, vwap, rs_1h, cvd, funding, headroom, close_pos, score ≥ 55. The pick used both years, so real results should be expected to be lower.
 
+## Research layer (2026-09-30)
+
+| Topic | Decision | Why |
+|---|---|---|
+| Live recorder | After each 5m scan, one row per universe coin (`research/schema.py`: ~95 columns - features as unit-free numbers, every Ignition condition 1/0/-1, score components, decision, regime, 5m bar, and live-only premium / funding forecast / spread / depth / raw OI) appended to a gzip CSV per UTC day. Failures never touch the scanner. | Only the live scanner sees OI history, order books and funding forecasts; recording them now makes them testable later. |
+| Labels | `research/labels.py`: forward returns 1h/4h/24h, 4h MFE/MAE, "+3% before -2%" (same-bar = loss), on a strict 5m grid (gaps -> no label). Never used by the scanner. | Stop-independent outcome for every bar, not only signals. |
+| History | `research/history.py` rebuilds the same rows for 2 years through the live code (break bars + an hourly sample) with the exact Policy S trade on every breakout. Checked: the recorded sent signals equal the confirmed backtest (345 / +11.19R and 242 / +55.12R). | |
+| Miner | `research/mine.py`: overview, near misses (no-data conditions count as off, like the backtest), feature deciles (consistent = same monotonic direction in both periods), missed big moves, rules found on one period and tested on the other (lift for rates, difference for R; also rules to AVOID). Nightly on the last 30 days of live data (memory on a 1 GB VPS). | Patterns must survive a period they were not found on. |
+| Candidates | `research/candidates.py` replays rules as systems with the live alert rules; the rebuilt current system matches exactly. | |
+
+**First findings (history, thresholds from 2024-25, 2025-26 unseen):** every remaining filter earns its keep (its near misses do worse than the signals that fired, both years). Stronger breakouts win more (bigger candle, further above VWAP / 12h high, stronger RS and returns). Candidate systems vs current (345 / +11.2R / +$701 and 242 / +55.1R / +$1,200): room ≥ 4.4% -> 246 / +23.9R / +$872 and 178 / +54.2R / +$1,153 with a lower drawdown (9.8R / 8.9R); current + "burst" (candle ≥ 1.52 ATR and 1h ≥ +3.8%) -> 115 / +29.4R / +$908 and 102 / +30.2R / +$839, profit factor 1.88 / 1.82, drawdown 7.8R / 7.2R; "burst" alone -> 598 / +26.9R / +$909 and 640 / +83.6R / +$2,023 but a 29.5R drawdown. Big +6% moves are rarely caught (2%): most start without a 12h-high breakout, in very volatile coins after a dip; volatility predicts size, not direction. Nothing switched live. Also noted: WEEX's 200-level book shows very large resting orders a few ticks deep, so the USD depth figure is inflated for big coins.
+
 ## Threshold changes (your decisions)
 
 | Date | Change | Why |

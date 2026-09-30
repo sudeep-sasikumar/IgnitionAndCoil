@@ -67,6 +67,10 @@ class Engine:
         self.tg = Telegram(cfg, env["TELEGRAM_BOT_TOKEN"], env["TELEGRAM_CHAT_ID"], self.db)
         self.tg.on_command = self.handle_command
         self.highs = None
+        self.recorder = None
+        if cfg.get("research") and cfg.research.get("record_snapshots"):
+            from research.recorder import Recorder
+            self.recorder = Recorder(self)
         if cfg.get("highs") and cfg.highs.get("enabled"):
             from highs.service import HighsService
             self.highs = HighsService(self)
@@ -429,6 +433,12 @@ class Engine:
             return  # stale data: signals paused until healthy again
         await self.publish_signals(sigs)
         await self.publish_watches(watches)
+        if self.recorder:
+            try:
+                rows = self.recorder.rows(as_of, sigs)
+                await asyncio.to_thread(self.recorder.write, as_of, rows)
+            except Exception:  # noqa: BLE001 - research data never disturbs the scanner
+                log.exception("research recorder failed")
 
     async def bar_loop(self) -> None:
         delay = int(self.cfg.exchange.bar_close_delay_s * 1000)
@@ -594,6 +604,9 @@ class Engine:
             lines = await self.journal.load_and_catch_up()
             await self.trading.back_online_summary(lines)
             await self.ws.set_symbols(self.tracked)
+            if self.recorder:
+                from research.recorder import nightly_loop
+                self._tasks.append(asyncio.create_task(nightly_loop(self), name="research_nightly"))
             if self.highs:
                 await asyncio.to_thread(self.highs.load)
                 self._tasks += [asyncio.create_task(self.highs.scan_loop(), name="highs_scan"),

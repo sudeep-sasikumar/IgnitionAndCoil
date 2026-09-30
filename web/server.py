@@ -26,7 +26,7 @@ log = logging.getLogger("web")
 STATIC = Path(__file__).resolve().parent / "static"
 SYMBOL_RE = re.compile(r"^[A-Z0-9]{2,30}$")
 SIGNAL_RE = re.compile(r"^S-\d{1,9}$")
-PAGES = ("/", "/settings", "/signals", "/trades", "/trades/new", "/trades/close-all", "/stats", "/highs")
+PAGES = ("/", "/settings", "/signals", "/trades", "/trades/new", "/trades/close-all", "/stats", "/highs", "/research")
 TRADE_RE = re.compile(r"^M-\d{1,9}$")
 PUBLIC = ("/login", "/static/app.css", "/static/favicon.svg", "/static/login.js")
 CSP = ("default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; "
@@ -275,6 +275,34 @@ def create_app(eng, hub: WebHub) -> FastAPI:
         if eng.highs is None:
             return {"disabled": True}
         return await asyncio.to_thread(eng.highs.view)
+
+    @app.get("/api/research")
+    async def api_research():
+        def load():
+            base = Path(cfg.data_dir) / "research"
+            reports = {}
+            shipped = Path(__file__).resolve().parent.parent / "research"      # snapshots shipped with the code
+            for name in ("history", "live", "candidates"):
+                p = base / "reports" / f"{name}.json"
+                if not p.exists() and name != "live":
+                    p = shipped / ("history_report.json" if name == "history" else "candidates_report.json")
+                if p.exists():
+                    try:
+                        reports[name] = json.loads(p.read_text(encoding="utf-8"))
+                    except ValueError:
+                        pass
+            files = [{"name": f.name, "bytes": f.stat().st_size} for f in sorted((base / "snapshots").glob("*.csv.gz"))]
+            return {"reports": reports, "files": files, "recording": eng.recorder is not None}
+        return await asyncio.to_thread(load)
+
+    @app.get("/api/research/file/{name}")
+    async def api_research_file(name: str):
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}\.csv\.gz", name):
+            return JSONResponse({"error": "bad file name"}, status_code=400)
+        p = Path(cfg.data_dir) / "research" / "snapshots" / name
+        if not p.exists():
+            return JSONResponse({"error": "not found"}, status_code=404)
+        return FileResponse(p, media_type="application/gzip", filename=name)
 
     @app.get("/api/symbols")
     async def api_symbols():

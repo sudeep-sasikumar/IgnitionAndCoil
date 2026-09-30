@@ -183,6 +183,27 @@ The **Highs** tab lists coins in the CoinGecko top 2,000 that broke their **all-
   - The tab shows a snapshot until you do.
 - **Settings:** the `highs:` section of `config.yaml`, e.g. `alert_min_volume_usd` to skip illiquid coins in Telegram.
 
+### Research tab (intelligence gathering)
+
+Every 5 minutes the scanner records **what it saw for every coin**, not just the signals, into `var/research/snapshots/<day>.csv.gz` (about 1-2 MB a day). Each row holds:
+- **What the scanner decided:** every feature, every condition (pass / fail / no data), the score, and whether a signal fired and was sent.
+- **Market context:** the regime, BTC's moves and market breadth.
+- **Live-only data:** things no backtest can rebuild later, namely the order-book spread and depth, the mark-vs-index premium, the funding forecast and raw open interest.
+
+Each file can be downloaded from the tab.
+
+**The miner** labels each row with what happened next: the return 1h / 4h / 24h later, the highest and lowest price within 4h, and whether +3% came before −2%.
+- **Two periods:** it keeps only patterns that hold in both halves of the data.
+- **Automatic:** it runs every night on the last 30 days of recordings.
+- **History report:** a two-year version is built from price history (`python -m research.history`, then `python -m research.mine --history y2025,y2026`). It shows:
+  - near misses (breakouts one filter short);
+  - which features separate winning from losing breakouts and signals;
+  - which big moves were missed and why;
+  - rules found on one year and tested on the other.
+- **Candidate systems:** `python -m research.candidates` replays promising rules as real systems, with your alert rules and exact Policy S trades. The current system is rebuilt first and must match.
+
+Findings are evidence to test, not settings to switch on blindly.
+
 ## 5. Your trading model: 20x · Policy S
 
 Chosen on 2026-09-28 from a one-year walk-forward study (full details in `docs\DECISIONS.md`):

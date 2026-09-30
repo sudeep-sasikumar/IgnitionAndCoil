@@ -271,6 +271,18 @@ highs:
   exclude_name_keywords: [wrapped, bridged, staked, restaked, "liquid staking", tokenized]
   study_file: highs_study.json  # written by: python -m highs.study (in data_dir)
 
+research:
+  # Intelligence gathering: every 5m bar, one row per universe coin (features, every condition,
+  # score, decision, order book, OI, premium) -> <data_dir>/research/snapshots/*.csv.gz, ~1-2 MB/day.
+  # The miner (python -m research.mine) labels them with what happened next and looks for patterns.
+  record_snapshots: true
+  mine_daily_at: "00:40"        # London time: nightly pattern report on the recorded days (Research tab)
+  min_days_to_mine: 3
+  mine_last_days: 30            # nightly report uses the most recent days only (memory on a small VPS)
+  big_move_pct: 6.0             # a "big move" = price rose this much within 4h (missed-move analysis)
+  tp_pct: 3.0                   # label: +tp_pct reached before -sl_pct (4h window), a stop-independent win proxy
+  sl_pct: 2.0
+
 reminders:                      # used from M4 (journal); editable in Settings
   bedtime_reminder: "23:30"     # London time
   bedtime_repeat_min: 30
