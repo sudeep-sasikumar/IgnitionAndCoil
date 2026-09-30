@@ -15,6 +15,12 @@ from features.compute import Features
 from levels.resistance import Headroom
 
 IGNITION, COIL = "IGNITION", "COIL"
+IGNITION_SHORT, COIL_SHORT = "IGNITION_SHORT", "COIL_SHORT"
+LONG, SHORT = "LONG", "SHORT"
+
+
+def side_of(setup: str) -> str:
+    return SHORT if setup.endswith("_SHORT") else LONG
 
 
 @dataclass
@@ -105,6 +111,48 @@ def eval_ignition(f: Features, b5: BarArrays, hr: Headroom, cfg, disabled: set[s
                       "prior_12h_high": prior_high})
 
 
+def eval_ignition_short(f: Features, b5: BarArrays, hr: Headroom, cfg, disabled: set[str]) -> SetupEval:
+    """Mirror of Ignition: high-volume breakdown below the 12h low. Same thresholds, flipped;
+    hr = room DOWN to the nearest support (headroom_down)."""
+    g = cfg.ignition
+    n = g.range_bars_5m
+    o, h, l, c = float(b5.o[-1]), float(b5.h[-1]), float(b5.l[-1]), float(b5.c[-1])
+    prior_low = float(b5.l[-1 - n:-1].min()) if len(b5) > n else float("nan")
+    rng = h - l
+    close_pos = (h - c) / rng if rng > 0 else 0.0            # 1 = closed on the low
+    fund_pct = f.funding_8h * 100 if f.funding_8h is not None else None
+    sell_ratio = 1 - f.taker_buy_ratio_15m if _ok(f.taker_buy_ratio_15m) else None
+    conds = [
+        _cond("close < 12h low", "price", _pct_diff(c, prior_low), lambda d: d < 0, PCT),
+        _cond("rvol_5m >= %g" % g.min_rvol_5m, "volume", f.rvol_5m, lambda x: x >= g.min_rvol_5m, "{:.1f}x"),
+        _cond("rvol_15m >= %g" % g.min_rvol_15m, "volume", f.rvol_15m, lambda x: x >= g.min_rvol_15m, "{:.1f}x"),
+        _cond("close < VWAP24h", "trend", _pct_diff(c, f.vwap_24h), lambda d: d < 0, PCT),
+        _cond("EMA20 < EMA50 (15m)", "trend", _pct_diff(f.ema20_15m, f.ema50_15m), lambda d: d < 0, PCT),
+        _cond("-%g%% <= ret_1h <= -%g%%" % (g.max_ret_1h, g.min_ret_1h), "momentum", f.ret_1h,
+              lambda x: -g.max_ret_1h <= x <= -g.min_ret_1h, PCT),
+        _cond("ret_24h >= -%g%%" % g.max_ret_24h, "momentum", f.ret_24h, lambda x: x >= -g.max_ret_24h, PCT),
+        _cond("rs_1h <= -%g%%" % g.min_rs_1h, "momentum", f.rs_1h, lambda x: x <= -g.min_rs_1h, PCT),
+        _cond("oi_chg_1h >= %g%%" % g.min_oi_chg_1h, "oi", f.oi_chg_1h, lambda x: x >= g.min_oi_chg_1h, PCT),
+        _cond("taker_sell_ratio_15m >= %g" % g.min_taker_ratio_15m, "flow", sell_ratio,
+              lambda x: x >= g.min_taker_ratio_15m, "{:.2f}"),
+        _cond("cvd_slope_1h < 0", "flow", f.cvd_slope_1h_norm if _ok(f.cvd_slope_1h_norm) else f.cvd_slope_1h,
+              lambda x: x < -g.min_cvd_slope, "{:+.2f}"),
+        _cond("funding_8h >= -%g%%" % g.max_funding_8h_pct, "funding", fund_pct,
+              lambda x: x >= -g.max_funding_8h_pct, "{:+.4f}%"),
+        _cond("room to support >= %g%%" % g.min_headroom_pct, "headroom", hr.pct, lambda x: x >= g.min_headroom_pct,
+              "{:.2f}%" + (" (discovery)" if hr.price_discovery else "")),
+        _cond("close in bottom %g%% of candle" % g.close_top_pct, "candle", close_pos,
+              lambda x: x >= 1 - g.close_top_pct / 100, "{:.0%} of range"),
+        _cond("candle <= %gx ATR15m" % g.max_candle_atr15, "candle",
+              rng / f.atr_15m if _ok(f.atr_15m) and f.atr_15m > 0 else None, lambda x: x <= g.max_candle_atr15,
+              "{:.2f}x ATR"),
+    ]
+    stop = h + cfg.plan.ignition_stop_atr15 * f.atr_15m if _ok(f.atr_15m) else None
+    return SetupEval(IGNITION_SHORT, conds, _hard_pass(conds, disabled) and f.warm, stop, c,
+                     {"breakout_bar": {"t": int(b5.t[-1]), "o": o, "h": h, "l": l, "c": c},
+                      "prior_12h_low": prior_low})
+
+
 # ---- Setup B: Coil -> Breakout --------------------------------------------------
 
 @dataclass
@@ -118,15 +166,30 @@ class CoilWatch:
 
 class CoilTracker:
     """WATCH state per symbol. A watch stays valid for watch_valid_h after the WATCH
-    conditions last held; the coil box is re-measured every time they hold."""
+    conditions last held; the coil box is re-measured every time they hold.
+    side=SHORT: the mirror (downtrend squeeze that breaks below the coil low)."""
 
-    def __init__(self, cfg):
+    def __init__(self, cfg, side: str = LONG):
         self.cfg = cfg
+        self.side = side
         self.watches: dict[str, CoilWatch] = {}
 
     def watch_conditions(self, f: Features, cfg, disabled: set[str]) -> tuple[list[Cond], bool]:
         k = cfg.coil
         fund_pct = f.funding_8h * 100 if f.funding_8h is not None else None
+        if self.side == SHORT:
+            conds = [
+                _cond("BBW(1h) pct <= %g" % k.max_bbw_pct, "squeeze", f.bbw_pct_1h, lambda x: x <= k.max_bbw_pct,
+                      "{:.0f}"),
+                _cond("1h close < EMA50(1h)", "trend", _pct_diff(f.close_1h, f.ema50_1h), lambda d: d < 0, PCT),
+                _cond("EMA50(1h) falling", "trend", f.ema50_1h_falling, lambda x: x),
+                _cond("oi_chg_4h >= %g%%" % k.min_oi_chg_4h, "oi", f.oi_chg_4h, lambda x: x >= k.min_oi_chg_4h, PCT),
+                _cond("|ret_4h| <= %g%%" % k.max_abs_ret_4h, "momentum", f.ret_4h,
+                      lambda x: abs(x) <= k.max_abs_ret_4h, PCT),
+                _cond("funding_8h >= -%g%%" % k.max_funding_8h_pct, "funding", fund_pct,
+                      lambda x: x >= -k.max_funding_8h_pct, "{:+.4f}%"),
+            ]
+            return conds, _hard_pass(conds, disabled) and f.warm
         conds = [
             _cond("BBW(1h) pct <= %g" % k.max_bbw_pct, "squeeze", f.bbw_pct_1h, lambda x: x <= k.max_bbw_pct,
                   "{:.0f}"),
@@ -165,6 +228,20 @@ class CoilTracker:
             return None
         k = self.cfg.coil
         c15 = float(b15.c[-1])
+        if self.side == SHORT:
+            sell_ratio = 1 - f.taker_buy_ratio_15m if _ok(f.taker_buy_ratio_15m) else None
+            conds = [
+                _cond("15m close < coil low", "price", _pct_diff(c15, w.box_low), lambda d: d < 0, PCT),
+                _cond("rvol_15m >= %g" % k.min_rvol_15m, "volume", f.rvol_15m, lambda x: x >= k.min_rvol_15m,
+                      "{:.1f}x"),
+                _cond("taker_sell_ratio_15m >= %g" % k.min_taker_ratio_15m, "flow", sell_ratio,
+                      lambda x: x >= k.min_taker_ratio_15m, "{:.2f}"),
+                _cond("room to support >= %g%%" % k.min_headroom_pct, "headroom", hr.pct,
+                      lambda x: x >= k.min_headroom_pct, "{:.2f}%" + (" (discovery)" if hr.price_discovery else "")),
+            ]
+            stop = w.box_low + self.cfg.plan.coil_stop_atr15 * f.atr_15m if _ok(f.atr_15m) else None
+            return SetupEval(COIL_SHORT, conds, _hard_pass(conds, disabled), stop, c15,
+                             {"box_high": w.box_high, "box_low": w.box_low, "watch_since": w.since_ms})
         conds = [
             _cond("15m close > coil high", "price", _pct_diff(c15, w.box_high), lambda d: d > 0, PCT),
             _cond("rvol_15m >= %g" % k.min_rvol_15m, "volume", f.rvol_15m, lambda x: x >= k.min_rvol_15m, "{:.1f}x"),

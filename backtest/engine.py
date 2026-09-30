@@ -22,13 +22,14 @@ from data.oi import oi_change_pct
 from data.universe import count_deep_wicks
 from exits.context import replay
 from exits.engine import make_params, new_state
+from exits.short import make_params_short, price_range, replay_short
 from features import indicators as ind
 from features.compute import MarketInputs, compute_features
 from paper.book import leg_kind
 from plan.pnl import Leg, entry_fill, pnl_usd
 from signals.engine import SignalEngine
 from core.engine import default_policy_missing
-from signals.regime import RISK_OFF, compute_regime
+from signals.regime import RISK_OFF, RISK_ON, compute_regime
 
 log = logging.getLogger("backtest")
 
@@ -95,6 +96,16 @@ def window(a: BarArrays, t0: int, t1: int) -> BarArrays:
     lo = int(np.searchsorted(a.t, t0))
     hi = int(np.searchsorted(a.tc, t1, side="right"))
     return BarArrays(*(getattr(a, f)[lo:max(lo, hi)] for f in ("t", "o", "h", "l", "c", "v", "qv", "tbv", "tbqv", "tc")))
+
+
+def regime_block(sig, regime, cfg) -> str | None:
+    """Regime gate (same as live for longs): longs are held back in RISK_OFF; shorts follow
+    short.regime_rule - "risk_off" (only in RISK_OFF) or "not_risk_on" (RISK_OFF or NEUTRAL)."""
+    state = regime.state if regime else "NEUTRAL"
+    if sig.side == "SHORT":
+        ok = state == RISK_OFF if cfg.short.regime_rule == "risk_off" else state != RISK_ON
+        return None if ok else f"regime_{state.lower()}"
+    return "risk_off" if "RISK_OFF" in sig.tags or state == RISK_OFF else None
 
 
 def bt_config(cfg, disabled: set[str]) -> Config:
@@ -220,17 +231,16 @@ class Backtester:
             for sig in sorted(bar_sigs, key=lambda s: s.score, reverse=True):
                 rec = sig.to_record()
                 recent = [t for t in sent_times if t > T - 3_600_000]
-                if "RISK_OFF" in sig.tags or (regime and regime.state == RISK_OFF):
-                    reason = "risk_off"
-                elif any(t.startswith("BLACKOUT") for t in sig.tags) and not cfg.signals.blackout_alerts:
-                    reason = "blackout"
-                elif default_policy_missing(rec, cfg):
-                    reason = "default_policy_na"
-                elif len(recent) >= cfg.signals.max_alerts_per_hour:
-                    reason = "hourly_cap"
-                else:
-                    reason = None
-                    sent_times.append(T)
+                reason = regime_block(sig, regime, cfg)
+                if reason is None:
+                    if any(t.startswith("BLACKOUT") for t in sig.tags) and not cfg.signals.blackout_alerts:
+                        reason = "blackout"
+                    elif default_policy_missing(rec, cfg):
+                        reason = "default_policy_na"
+                    elif len(recent) >= cfg.signals.max_alerts_per_hour:
+                        reason = "hourly_cap"
+                    else:
+                        sent_times.append(T)
                 rec["suppressed_reason"] = reason
                 rec["signal_id"] = f"B-{len(signals) + 1:04d}"
                 signals.append(rec)
@@ -249,8 +259,10 @@ class Backtester:
         cfg = self.cfg
         plan = sig["plan"]
         sym = sig["symbol"]
+        side = sig.get("side", "LONG")
+        short = side == "SHORT"
         ref, qty = float(plan["ref_entry"]), float(plan["qty"])
-        fill = entry_fill(ref, cfg)
+        fill = entry_fill(ref, cfg, side=side)
         T = int(sig["bar_close_ms"])
         horizon = T + int(cfg.plan.max_hold_h * 3_600_000) + M5
         until = min(horizon, end_ms)
@@ -262,31 +274,35 @@ class Backtester:
             if sp.get("price") is None:
                 continue
             stop = float(sp["price"])
-            st = new_state(make_params(fill, T, stop, float(plan["tp1"]), plan.get("tp2"), cfg,
-                                       liq_price=plan.get("liq_price")))
-            evs = replay(st, b5, b15, cfg, until)
+            mk = make_params_short if short else make_params
+            st = new_state(mk(fill, T, stop, float(plan["tp1"]), plan.get("tp2"), cfg, liq_price=plan.get("liq_price")))
+            evs = (replay_short if short else replay)(st, b5, b15, cfg, until)
+            lo, hi = price_range(st) if short else (st.lowest, st.highest)
+            mfe = (1 - lo / fill) * 100 if short else (hi / fill - 1) * 100
+            mae = (1 - hi / fill) * 100 if short else (lo / fill - 1) * 100
             legs = [{"ts": e.ts, "price": e.price, "fraction": e.fraction, "qty": qty * e.fraction,
                      "kind": leg_kind(e.kind), "reason": e.kind} for e in evs if e.kind != "STOP_MOVE"]
-            risk = abs(pnl_usd(ref, qty, [Leg(stop, 1.0, "stop")], cfg))
+            risk = abs(pnl_usd(ref, qty, [Leg(stop, 1.0, "stop")], cfg, side=side))
             base = {"signal_id": sig["signal_id"], "policy": sp["policy"], "symbol": sym, "setup": sig["setup"],
+                    "side": side,
                     "score": sig["score"], "regime": sig.get("regime", {}).get("state", "?"),
                     "session": sig["session"], "suppressed_reason": sig.get("suppressed_reason"),
                     "entry_ms": T, "entry_ref": ref, "stop": stop, "tp1": plan["tp1"], "tp2": plan.get("tp2"),
                     "risk_usd": risk, "legs": legs, "tags": sig.get("tags", [])}
             if not st.closed:
                 out.append({**base, "status": "OPEN_AT_END", "net": None, "r": None, "exit_ms": None,
-                            "exit_reason": None, "mfe_pct": (st.highest / fill - 1) * 100,
-                            "mae_pct": (st.lowest / fill - 1) * 100})
+                            "exit_reason": None, "mfe_pct": mfe, "mae_pct": mae})
                 continue
             fund = 0.0
             for ts, rate, mark in self.inp.funding.get(sym) or []:
                 if T < ts <= st.exit_ms:
                     q_open = qty - sum(l["qty"] for l in legs if l["ts"] <= ts)
                     if q_open > 0:
-                        fund -= rate * q_open * (mark or ref)
-            net = pnl_usd(ref, qty, [Leg(l["price"], l["fraction"], l["kind"]) for l in legs], cfg, funding_usd=fund)
+                        # longs pay a positive rate, shorts receive it
+                        fund += (1 if short else -1) * rate * q_open * (mark or ref)
+            net = pnl_usd(ref, qty, [Leg(l["price"], l["fraction"], l["kind"]) for l in legs], cfg, funding_usd=fund,
+                          side=side)
             out.append({**base, "status": "CLOSED", "net": net, "r": net / risk if risk else None,
                         "exit_ms": st.exit_ms, "exit_reason": st.exit_reason, "funding_usd": fund,
-                        "tp1_ms": st.tp1_ms, "tp2_ms": st.tp2_ms,
-                        "mfe_pct": (st.highest / fill - 1) * 100, "mae_pct": (st.lowest / fill - 1) * 100})
+                        "tp1_ms": st.tp1_ms, "tp2_ms": st.tp2_ms, "mfe_pct": mfe, "mae_pct": mae})
         return out

@@ -151,6 +151,14 @@ coil:
   min_taker_ratio_15m: 0.55
   min_headroom_pct: 3.0         # = TP1 (was 4.0; changed 2026-09-27 after backtest)
 
+short:
+  # Short versions of Ignition and Coil: every condition mirrored (breakdown below the 12h low /
+  # coil low, taker SELL ratio, falling CVD, RS below BTC, funding not too negative, room down to
+  # support, upper-wick penalty) with the SAME thresholds as the long setups above.
+  # BACKTEST ONLY for now: live alerts, journal and dashboard are still long-only.
+  enabled: false
+  regime_rule: risk_off         # risk_off: shorts only in RISK_OFF | not_risk_on: RISK_OFF or NEUTRAL
+
 score:
   min_entry: 55                # 20x-S model
   # Each component scores 0..1 on a linear ramp lo->hi, times its weight (weights sum to 100).

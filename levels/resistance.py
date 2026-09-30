@@ -24,6 +24,7 @@ class Level:
 @dataclass
 class LevelMap:
     levels: list[Level] = field(default_factory=list)
+    supports: list[Level] = field(default_factory=list)   # short side only (short.enabled)
 
     def above(self, price: float, ignore_within_pct: float) -> list[Level]:
         floor = price * (1 + ignore_within_pct / 100)
@@ -32,6 +33,11 @@ class LevelMap:
     def nearest_above(self, price: float, ignore_within_pct: float) -> Level | None:
         a = self.above(price, ignore_within_pct)
         return a[0] if a else None
+
+    def nearest_below(self, price: float, ignore_within_pct: float) -> Level | None:
+        cap = price * (1 - ignore_within_pct / 100)
+        b = [lv for lv in self.supports if lv.price < cap]
+        return max(b, key=lambda lv: lv.price) if b else None
 
 
 @dataclass
@@ -99,7 +105,27 @@ def build_levels(b1h: BarArrays, b4h: BarArrays, cfg) -> LevelMap:
                                                      c.hvn_window_bins, c.hvn_min_ratio)]
     if len(b4h):
         lv += [Level(p, "swing_4h") for p in swing_highs(b4h.h, c.pivot_bars, c.swing_4h_lookback_bars)]
-    return LevelMap(lv)
+    sup: list[Level] = []
+    short = cfg.get("short")
+    if short and short.get("enabled"):
+        # mirror image for shorts: swing lows (= swing highs of the negated lows), 7d/30d lows, same HVNs
+        if len(b1h):
+            sup += [Level(-p, "swing_low_1h") for p in swing_highs(-b1h.l, c.pivot_bars, c.swing_1h_lookback_bars)]
+            sup.append(Level(float(b1h.l[-c.high_7d_bars_1h:].min()), "low_7d"))
+            sup.append(Level(float(b1h.l[-c.high_30d_bars_1h:].min()), "low_30d"))
+            sup += [x for x in lv if x.kind == "hvn"]
+        if len(b4h):
+            sup += [Level(-p, "swing_low_4h") for p in swing_highs(-b4h.l, c.pivot_bars, c.swing_4h_lookback_bars)]
+    return LevelMap(lv, sup)
+
+
+def headroom_down(levels: LevelMap, price: float, atr_1h_pct: float, cfg) -> Headroom:
+    """Short side: room down to the nearest support (price discovery below = no support)."""
+    c = cfg.levels
+    lv = levels.nearest_below(price, c.ignore_within_pct)
+    if lv is None:
+        return Headroom(pct=c.discovery_atr_mult * atr_1h_pct, level=None, price_discovery=True)
+    return Headroom(pct=(1 - lv.price / price) * 100, level=lv, price_discovery=False)
 
 
 def headroom(levels: LevelMap, price: float, atr_1h_pct: float, cfg) -> Headroom:

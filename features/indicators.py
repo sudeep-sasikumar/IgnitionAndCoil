@@ -107,6 +107,13 @@ def linreg_slope(y: np.ndarray) -> float:
     return float((x * (y - y.mean())).sum() / (x * x).sum())
 
 
+def upper_wick_pct(o: np.ndarray, h: np.ndarray, c: np.ndarray) -> np.ndarray:
+    """Upper wick as % of the body top (mirror of lower_wick_pct; squeeze risk for shorts)."""
+    body_high = np.maximum(o, c)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        return (h - body_high) / body_high * 100.0
+
+
 def lower_wick_pct(o: np.ndarray, l: np.ndarray, c: np.ndarray) -> np.ndarray:
     body_low = np.minimum(o, c)
     with np.errstate(invalid="ignore", divide="ignore"):

@@ -26,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from backtest.data import HistoryCache, aggregate, warmup_ms  # noqa: E402
 from backtest.engine import Backtester, BTInputs  # noqa: E402
 from backtest.report import build  # noqa: E402
-from core.clock import TF_MS, Clock, floor_tf  # noqa: E402
+from core.clock import TF_MS, Clock, floor_tf, parse_local  # noqa: E402
 from core.config import Config, apply_overrides, load_config  # noqa: E402
 from core.logs import setup_logging  # noqa: E402
 from data.db import Database  # noqa: E402
@@ -58,13 +58,13 @@ async def pick_symbols(cfg, rest, explicit: list[str], n: int) -> tuple[list[str
 
 
 async def prepare(cfg, rest, db, clock, days: int | None, symbols: str | None, max_symbols: int | None,
-                  overrides: list[str], concurrency: int | None = None) -> dict:
+                  overrides: list[str], concurrency: int | None = None, end_ms: int | None = None) -> dict:
     """Download/cache history and build the backtest inputs + the report's data notes."""
     server, b, af = await rest.server_time()
     clock.set_offset(server, b, af)
     now = clock.now_ms()
     days = days or cfg.backtest.days
-    end = floor_tf(now, "5m")
+    end = floor_tf(min(end_ms, now) if end_ms else now, "5m")   # --end replays an earlier window exactly
     start = end - days * DAY
     explicit = [s.strip().upper() for s in (symbols or "").split(",") if s.strip()] or list(cfg.backtest.symbols or [])
     syms, meta = await pick_symbols(cfg, rest, explicit, max_symbols or cfg.backtest.max_symbols)
@@ -185,7 +185,8 @@ async def main_async(a) -> int:
     rest = WeexRest(cfg, clock)
     db = Database(cfg.database.url.format(data_dir=cfg.data_dir.as_posix()))
     try:
-        prep = await prepare(cfg, rest, db, clock, a.days, a.symbols, a.max_symbols, overrides)
+        prep = await prepare(cfg, rest, db, clock, a.days, a.symbols, a.max_symbols, overrides,
+                             end_ms=parse_local(a.end, cfg.app.display_tz) if a.end else None)
         inp, syms, notes, disabled = prep["inp"], prep["syms"], prep["notes"], prep["disabled"]
         start, end, now, days = prep["start"], prep["end"], prep["now"], prep["days"]
 
@@ -204,7 +205,7 @@ async def main_async(a) -> int:
         meta_out = {"symbols": syms, "config_hash": cfg.hash, "generated_ms": now, "notes": notes,
                     "runtime_s": time.time() - t_run}
         html_path.write_text(build(result, meta_out, cfg), encoding="utf-8")
-        cols = ["signal_id", "policy", "symbol", "setup", "score", "regime", "session", "suppressed_reason", "status",
+        cols = ["signal_id", "policy", "side", "symbol", "setup", "score", "regime", "session", "suppressed_reason", "status",
                 "entry_ms", "exit_ms", "exit_reason", "entry_ref", "stop", "tp1", "tp2", "risk_usd", "net", "r",
                 "funding_usd", "mfe_pct", "mae_pct"]
         with open(csv_path, "w", newline="", encoding="utf-8") as f:
@@ -214,13 +215,17 @@ async def main_async(a) -> int:
                 w.writerow([t.get(c, "") if t.get(c) is not None else "" for c in cols])
 
         from stats.metrics import metrics
+        sides = sorted({t.get("side", "LONG") for t in result["trades"]})
         for p in ("L", "S"):
-            m = metrics([t for t in result["trades"] if t["policy"] == p and t["status"] == "CLOSED"])
-            if m.get("n"):
-                _say(f"Policy {p}: {m['n']} trades, win {m['win_rate'] * 100:.0f}%, expectancy "
-                     f"{m['expectancy_usd']:+.2f}$ / {m['expectancy_r']:+.2f}R, net {m['net']:+.2f}$")
-            else:
-                _say(f"Policy {p}: no closed trades")
+            for side in (["ALL"] + sides if len(sides) > 1 else ["ALL"]):
+                m = metrics([t for t in result["trades"] if t["policy"] == p and t["status"] == "CLOSED"
+                             and side in ("ALL", t.get("side", "LONG"))])
+                label = f"Policy {p}" + ("" if side == "ALL" else f" {side.lower()}s")
+                if m.get("n"):
+                    _say(f"{label}: {m['n']} trades, win {m['win_rate'] * 100:.0f}%, expectancy "
+                         f"{m['expectancy_usd']:+.2f}$ / {m['expectancy_r']:+.2f}R, net {m['net']:+.2f}$")
+                else:
+                    _say(f"{label}: no closed trades")
         _say(f"{len(result['signals'])} signals. Report: {html_path}")
         _say(f"Trades CSV: {csv_path}")
         if a.open:
@@ -238,6 +243,8 @@ def main() -> int:
     ap.add_argument("--days", type=int, default=None, help="days to replay (default: config backtest.days)")
     ap.add_argument("--symbols", default=None, help="comma-separated symbols (default: top by volume)")
     ap.add_argument("--max-symbols", type=int, default=None)
+    ap.add_argument("--end", default=None, metavar="'YYYY-MM-DD HH:MM'",
+                    help="end of the replayed window, London time (default: now) - to repeat an earlier run exactly")
     ap.add_argument("--config", default=None)
     ap.add_argument("--open", action="store_true", help="open the report in the browser")
     ap.add_argument("--set", action="append", metavar="KEY=VALUE",

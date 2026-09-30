@@ -168,9 +168,9 @@ def build(result: dict, meta: dict, cfg) -> str:
     notes = "".join(f"<li>{n}</li>" for n in meta["notes"])
     summary = metrics_table([("Policy L", metrics(by_pol["L"])), ("Policy S", metrics(by_pol["S"]))])
     dims = ""
-    for dim, label in (("setup", "Setup"), ("regime", "Regime"), ("score", "Score bucket"), ("session", "Session"),
+    for dim, label in (("side", "Long / short"), ("setup", "Setup"), ("regime", "Regime"), ("score", "Score bucket"), ("session", "Session"),
                        ("hour", "Hour of entry (London)"), ("alert", "Alert sent / suppressed")):
-        fn = DIMENSIONS[dim]
+        fn = DIMENSIONS[dim] if dim != "side" else (lambda t: t.get("side", "LONG"))
         dims += (f"<h3>{E(label)}</h3><div class=grid><div class=wrap><b>Policy L</b>{breakdown_table(breakdown(by_pol['L'], fn))}</div>"
                  f"<div class=wrap><b>Policy S</b>{breakdown_table(breakdown(by_pol['S'], fn))}</div></div>")
     reasons = ""

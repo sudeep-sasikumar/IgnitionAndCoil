@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from dataclasses import asdict, dataclass
 
-from plan.liquidation import Bracket, bracket_for, leverage_problem, liq_price_long
+from plan.liquidation import Bracket, bracket_for, leverage_problem, liq_price_long, liq_price_short
 from plan.pnl import Leg, breakeven_winrate, pnl_usd
 
 
@@ -50,6 +50,7 @@ class TradePlan:
     price_discovery: bool
     warnings: list[str]
     structural_stop: float | None = None   # raw Policy S level, kept even when n/a at default size
+    side: str = "LONG"                      # "SHORT" plans are mirrored (backtest only for now)
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -72,9 +73,12 @@ def _tick_round(x: float, precision: int | None, mode: str = "nearest") -> float
 def build_plan(symbol: str, setup: str, ref: float, structural_stop: float | None,
                resistance: float | None, brackets: list[Bracket] | None, cfg,
                margin: float | None = None, leverage: float | None = None,
-               precision: int | None = None) -> TradePlan:
+               precision: int | None = None, side: str = "LONG") -> TradePlan:
     """precision = WEEX pricePrecision; prices are rounded to the tick (Policy L stop is
-    rounded UP, i.e. away from liquidation)."""
+    rounded UP, i.e. away from liquidation). side="SHORT": resistance = the support below."""
+    if side == "SHORT":
+        return _build_plan_short(symbol, setup, ref, structural_stop, resistance, brackets, cfg,
+                                 margin, leverage, precision)
     t, p = cfg.trade, cfg.plan
     if structural_stop is not None:
         structural_stop = _tick_round(structural_stop, precision, "floor")
@@ -149,4 +153,87 @@ def build_plan(symbol: str, setup: str, ref: float, structural_stop: float | Non
         tp1_leg_usd=tp1_leg, tp2_leg_usd=tp2_leg, win_usd=win,
         resistance=resistance, price_discovery=resistance is None, warnings=warnings,
         structural_stop=structural_stop,
+    )
+
+
+def _build_plan_short(symbol: str, setup: str, ref: float, structural_stop: float | None,
+                      support: float | None, brackets: list[Bracket] | None, cfg,
+                      margin: float | None, leverage: float | None, precision: int | None) -> TradePlan:
+    """Mirror of build_plan for a short: liquidation ABOVE entry, stops above, targets below
+    (TP2 = max(-tp2_pct, support + offset)). Every rounding goes the conservative way."""
+    t, p = cfg.trade, cfg.plan
+    if structural_stop is not None:
+        structural_stop = _tick_round(structural_stop, precision, "ceil")
+    margin = t.margin_usd if margin is None else margin
+    leverage = t.leverage if leverage is None else leverage
+    notional = margin * leverage
+    qty = notional / ref
+    warnings: list[str] = []
+    if brackets:
+        liq = liq_price_short(ref, qty, margin, brackets)
+        mmr = bracket_for(brackets, notional).mmr
+        lp = leverage_problem(brackets, notional, leverage)
+        if lp:
+            warnings.append(lp)
+    else:
+        mmr = 0.01
+        liq = (qty * ref + margin) / (qty * (1 + mmr))
+        warnings.append("risk brackets unavailable: liquidation estimated with MMR 1%")
+
+    buf = t.liq_stop_buffer_pct / 100
+    stop_l_price = _tick_round(liq * (1 - buf), precision, "floor")
+
+    tp1 = _tick_round(ref * (1 - p.tp1_pct / 100), precision)
+    tp2 = ref * (1 - p.tp2_pct / 100)
+    if support is not None:
+        tp2 = max(tp2, support * (1 + p.tp2_res_offset_pct / 100))
+    tp2 = _tick_round(tp2, precision, "ceil")
+    tp2_pct = (1 - tp2 / ref) * 100                    # distance DOWN, positive
+    tp2_close = p.tp2_close_pct
+    runner = 100 - p.tp1_close_pct - p.tp2_close_pct
+    if tp2_pct <= p.tp1_pct + p.tp2_min_gap_pct:
+        tp2 = tp2_pct = None
+        runner += tp2_close
+        tp2_close = 0.0
+
+    def pnl(legs, q=qty):
+        return pnl_usd(ref, q, legs, cfg, side="SHORT")
+
+    f1 = p.tp1_close_pct / 100
+    tp1_leg = pnl([Leg(tp1, 1.0, "tp")], qty * f1)
+    tp2_leg = pnl([Leg(tp2, 1.0, "tp")], qty * tp2_close / 100) if tp2 else None
+    rest_px = tp2 if tp2 else tp1
+    win = pnl([Leg(tp1, f1, "tp"), Leg(rest_px, 1 - f1, "tp")])
+    full_tp1 = pnl([Leg(tp1, 1.0, "tp")])
+    full_tp2 = pnl([Leg(tp2, 1.0, "tp")]) if tp2 else None
+
+    def policy(name: str, price: float | None, note: str = "") -> StopPolicy:
+        if price is None:
+            return StopPolicy(name, None, None, None, None, None, None, None, note)
+        loss = pnl([Leg(price, 1.0, "stop")])
+        risk = abs(loss) if loss < 0 else float("nan")
+        return StopPolicy(name, _round_sig(price), (price / ref - 1) * 100, loss, breakeven_winrate(loss, win),
+                          full_tp1 / risk, (full_tp2 / risk) if full_tp2 is not None else None, win / risk, note)
+
+    stop_l = policy("L", stop_l_price)
+    if structural_stop is None:
+        stop_s = policy("S", None, "no structural stop")
+    elif structural_stop <= ref:
+        stop_s = policy("S", None, "structural stop at/below entry")
+    elif structural_stop > stop_l_price:
+        stop_s = policy("S", None, "beyond the liquidation-buffered stop")
+    else:
+        stop_s = policy("S", structural_stop)
+
+    return TradePlan(
+        symbol=symbol, setup=setup, ref_entry=ref,
+        chase_limit=_round_sig(_tick_round(ref * (1 - t.max_chase_pct / 100), precision, "ceil")),
+        margin=margin, leverage=leverage, notional=notional, qty=qty, mmr=mmr,
+        liq_price=_round_sig(_tick_round(liq, precision)),
+        stop_l=stop_l, stop_s=stop_s,
+        tp1=_round_sig(tp1), tp1_pct=p.tp1_pct, tp1_close_pct=p.tp1_close_pct,
+        tp2=_round_sig(tp2) if tp2 else None, tp2_pct=tp2_pct, tp2_close_pct=tp2_close, runner_pct=runner,
+        tp1_leg_usd=tp1_leg, tp2_leg_usd=tp2_leg, win_usd=win,
+        resistance=support, price_discovery=support is None, warnings=warnings,
+        structural_stop=structural_stop, side="SHORT",
     )

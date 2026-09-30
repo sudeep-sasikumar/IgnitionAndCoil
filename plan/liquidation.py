@@ -50,6 +50,15 @@ def liq_price_long(entry: float, qty: float, margin: float, brackets: list[Brack
     return max(liq, 0.0)
 
 
+def liq_price_short(entry: float, qty: float, margin: float, brackets: list[Bracket]) -> float:
+    """Mirror of liq_price_long from the same balance equation:
+        margin + qty * (entry - L) = MMR * qty * L - cum
+        => L = (qty*entry + margin + cum) / (qty * (1 + MMR))
+    NOT yet checked against a real WEEX short (the long formula was calibrated in M0)."""
+    b = bracket_for(brackets, qty * entry)
+    return (qty * entry + margin + b.cum) / (qty * (1 + b.mmr))
+
+
 def leverage_problem(brackets: list[Bracket], notional: float, leverage: float) -> str | None:
     b = bracket_for(brackets, notional)
     if leverage > b.max_leverage:

@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import time
 from pathlib import Path
 
 import numpy as np
@@ -36,6 +38,21 @@ def merge_arrays(a: BarArrays | None, b: BarArrays) -> BarArrays:
     return BarArrays(**{f: cat[f][idx] for f in FIELDS})
 
 
+
+def _atomic_write(path: Path, write) -> None:
+    """Write to a temp file, then swap it in: backtests running side by side never read a
+    half-written cache file."""
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+    with open(tmp, "wb") as f:
+        write(f)
+    for attempt in range(20):
+        try:
+            os.replace(tmp, path)
+            return
+        except PermissionError:          # Windows: another run has the file open for a moment
+            time.sleep(0.1 * (attempt + 1))
+    os.replace(tmp, path)
+
 class HistoryCache:
     def __init__(self, cfg, rest, now_ms: int):
         self.cfg, self.rest, self.now_ms = cfg, rest, now_ms
@@ -49,12 +66,13 @@ class HistoryCache:
         p = self._path(sym, tf)
         if not p.exists():
             return None, 0, 0
-        z = np.load(p)
-        arr = BarArrays(**{f: z[f] for f in FIELDS})
-        return arr, int(z["req_from"]), int(z["req_to"])
+        with np.load(p) as z:          # closed at once, so another run can replace the file
+            arr = BarArrays(**{f: z[f] for f in FIELDS})
+            return arr, int(z["req_from"]), int(z["req_to"])
 
     def _save(self, sym: str, tf: str, arr: BarArrays, req_from: int, req_to: int) -> None:
-        np.savez(self._path(sym, tf), req_from=req_from, req_to=req_to, **{f: getattr(arr, f) for f in FIELDS})
+        _atomic_write(self._path(sym, tf), lambda f: np.savez(f, req_from=req_from, req_to=req_to,
+                                                              **{k: getattr(arr, k) for k in FIELDS}))
 
     async def bars(self, sym: str, tf: str, start_ms: int, end_ms: int) -> BarArrays:
         """Closed bars with open time in [start_ms, end_ms], downloading what the cache lacks."""
@@ -108,7 +126,7 @@ class HistoryCache:
         if need:
             data = {"from": min(data["from"] or start, start), "to": max(data["to"], end_ms),
                     "rows": sorted(rows.values())}
-            p.write_text(json.dumps(data))
+            _atomic_write(p, lambda f: f.write(json.dumps(data).encode()))
         return [(int(t), float(r), float(m)) for t, r, m in sorted(rows.values()) if start_ms <= t <= end_ms]
 
 

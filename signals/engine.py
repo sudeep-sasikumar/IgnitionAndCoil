@@ -14,12 +14,13 @@ from zoneinfo import ZoneInfo
 
 from data.bars import BarArrays
 from features.compute import Features
-from levels.resistance import LevelMap, build_levels, headroom
+from levels.resistance import LevelMap, build_levels, headroom, headroom_down
 from plan.liquidation import Bracket
 from plan.trade_plan import TradePlan, build_plan
 from signals.regime import RISK_OFF, Regime
 from signals.score import compute_score
-from signals.setups import COIL, IGNITION, CoilTracker, CoilWatch, SetupEval, eval_ignition
+from signals.setups import (COIL, COIL_SHORT, IGNITION, IGNITION_SHORT, LONG, SHORT, CoilTracker, CoilWatch,
+                            SetupEval, eval_ignition, eval_ignition_short, side_of)
 
 ENTRY, WATCH, SKIP = "ENTRY", "WATCH", "SKIP"
 
@@ -43,6 +44,7 @@ class Signal:
     extra: dict
     signal_id: str | None = None
     suppressed_reason: str | None = None
+    side: str = LONG
 
     def to_record(self) -> dict:
         d = dataclasses.asdict(self)
@@ -101,6 +103,9 @@ class SignalEngine:
     def __init__(self, cfg):
         self.cfg = cfg
         self.coil = CoilTracker(cfg)
+        short = cfg.get("short")
+        self.short_enabled = bool(short and short.get("enabled"))
+        self.coil_short = CoilTracker(cfg, SHORT)
         self.disabled = set(cfg.signals.disabled_conditions or [])
         self.last_signal_ms: dict[str, int] = {}
         self.blackouts = parse_blackouts(cfg)
@@ -125,11 +130,16 @@ class SignalEngine:
                      regime: Regime | None, lm: LevelMap, ref: float, brackets: list[Bracket] | None,
                      precision: int | None) -> Signal:
         cfg = self.cfg
-        hr_ref = headroom(lm, ref, f.atr_1h_pct, cfg)
+        side = side_of(ev.setup)
+        hr_ref = (headroom_down if side == SHORT else headroom)(lm, ref, f.atr_1h_pct, cfg)
         res = hr_ref.level.price if hr_ref.level else None
-        plan = build_plan(sym, ev.setup, ref, ev.structural_stop, res, brackets, cfg, precision=precision)
+        plan = build_plan(sym, ev.setup, ref, ev.structural_stop, res, brackets, cfg, precision=precision, side=side)
         session, tags = session_tags(as_of, cfg)
-        if regime is not None and regime.state == RISK_OFF:
+        if side == SHORT:
+            tags.append("SHORT")
+            if regime is not None:
+                tags.append(f"REGIME:{regime.state}")     # shorts are gated by short.regime_rule
+        elif regime is not None and regime.state == RISK_OFF:
             tags.append("RISK_OFF")
         bl = self.blackout_label(as_of)
         if bl:
@@ -142,7 +152,7 @@ class SignalEngine:
             regime=regime.as_dict() if regime else {}, plan=plan,
             headroom={"pct": hr_ref.pct, "level": res, "kind": hr_ref.level.kind if hr_ref.level else None,
                       "price_discovery": hr_ref.price_discovery},
-            levels=_levels_dump(lm, ref), session=session, tags=tags, extra=ev.extra)
+            levels=_levels_dump(lm, ref), session=session, tags=tags, extra=ev.extra, side=side)
 
     def evaluate(self, sym: str, as_of: int, f: Features, b5: BarArrays, b15: BarArrays, b1h: BarArrays,
                  b4h: BarArrays, regime: Regime | None, brackets: list[Bracket] | None, ref_price: float,
@@ -178,6 +188,10 @@ class SignalEngine:
                     if ev.setup == COIL:
                         self.coil.consume(sym)
 
+        if self.short_enabled:
+            signals += self._evaluate_short(sym, as_of, f, b5, b15, b1h, lm, regime, rstate, brackets,
+                                            ref_price, precision, dry_run)
+
         ev, score, breakdown = best
         state = ENTRY if signals else WATCH if sym in self.coil.watches else SKIP
         row = ScanRow(symbol=sym, price=f.price, state=state, score=score, setup=ev.setup, n_pass=ev.n_pass,
@@ -189,5 +203,33 @@ class SignalEngine:
                       coil_entry_conds=coil_entry_conds, breakdown=breakdown)
         return row, signals, self.coil.watches.get(sym) if new_watch else None
 
+    def _evaluate_short(self, sym: str, as_of: int, f: Features, b5: BarArrays, b15: BarArrays, b1h: BarArrays,
+                        lm: LevelMap, regime: Regime | None, rstate: str, brackets: list[Bracket] | None,
+                        ref_price: float, precision: int | None, dry_run: bool) -> list[Signal]:
+        """Mirrored setups (short.enabled). Own cooldown and Coil watches, so the long side is
+        exactly as without shorts."""
+        cfg = self.cfg
+        hr = headroom_down(lm, f.price, f.atr_1h_pct, cfg)
+        evals = [eval_ignition_short(f, b5, hr, cfg, self.disabled)]
+        self.coil_short.update(sym, as_of, f, b1h, self.disabled)
+        if as_of % 900_000 == 0:
+            ce = self.coil_short.eval_entry(sym, f, b15, hr, self.disabled)
+            if ce:
+                evals.append(ce)
+        key = f"{sym}:{SHORT}"
+        if as_of - self.last_signal_ms.get(key, -10 ** 15) < cfg.signals.symbol_cooldown_min * 60_000:
+            return []
+        for ev in evals:
+            score, breakdown = compute_score(ev.setup, f, rstate, hr, cfg, self.disabled)
+            if ev.hard_pass and score >= cfg.score.min_entry:
+                sig = self._make_signal(ev, sym, as_of, f, score, breakdown, regime, lm, ref_price, brackets, precision)
+                if not dry_run:
+                    self.last_signal_ms[key] = as_of
+                    if ev.setup == COIL_SHORT:
+                        self.coil_short.consume(sym)
+                return [sig]
+        return []
 
-__all__ = ["SignalEngine", "Signal", "ScanRow", "ENTRY", "WATCH", "SKIP", "IGNITION", "COIL"]
+
+__all__ = ["SignalEngine", "Signal", "ScanRow", "ENTRY", "WATCH", "SKIP", "IGNITION", "COIL",
+           "IGNITION_SHORT", "COIL_SHORT"]

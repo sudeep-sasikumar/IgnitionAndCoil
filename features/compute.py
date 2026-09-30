@@ -60,6 +60,9 @@ class Features:
     next_funding_ms: int | None
     warm: bool = True                    # False if some lookback was too short
     notes: list[str] = field(default_factory=list)
+    # short-side mirrors (short setups are backtest-only for now)
+    ema50_1h_falling: bool = False
+    deep_upper_wicks_24h: int = 0
 
     def as_dict(self) -> dict:
         return {k: v for k, v in self.__dict__.items()}
@@ -85,6 +88,7 @@ def _feats_1h(b1h: BarArrays, cfg) -> dict:
     return {
         "e20_1h": _last(ind.ema(b1h.c, f.ema_fast)), "e50_1h": _last(ema50),
         "rising": bool(len(ema50) > k and np.isfinite(ema50[-1 - k]) and ema50[-1] > ema50[-1 - k]),
+        "falling": bool(len(ema50) > k and np.isfinite(ema50[-1 - k]) and ema50[-1] < ema50[-1 - k]),
         "atr1h": atr1h, "close_1h": close_1h, "atr1h_pct": atr1h / close_1h * 100 if close_1h else float("nan"),
         "bbw_last": _last(bbw),
         "bbw_pct": ind.percentile_rank(bbw, f.bb_pct_lookback_1h) if len(bbw) else float("nan"),
@@ -147,6 +151,8 @@ def compute_features(symbol: str, b5: BarArrays, b15: BarArrays, b1h: BarArrays,
     wl = u.wick_lookback_bars_5m
     wick = ind.lower_wick_pct(b5.o[-wl:], b5.l[-wl:], b5.c[-wl:])
     deep = int(np.count_nonzero(wick >= u.deep_wick_pct))
+    up_wick = ind.upper_wick_pct(b5.o[-wl:], b5.h[-wl:], b5.c[-wl:])
+    deep_up = int(np.count_nonzero(up_wick >= u.deep_wick_pct))
 
     k = cfg.regime.ema_slope_bars_1h
     warm = len(b5) > 288 and len(b15) > max(n15, f.ema_slow) and len(b1h) > f.ema_slow + k
@@ -163,6 +169,7 @@ def compute_features(symbol: str, b5: BarArrays, b15: BarArrays, b1h: BarArrays,
         taker_buy_ratio_15m=taker_ratio, cvd_slope_1h=cvd_slope, cvd_slope_1h_norm=cvd_norm, deep_wicks_24h=deep,
         oi_chg_15m=mk.oi_chg_15m, oi_chg_1h=mk.oi_chg_1h, oi_chg_4h=mk.oi_chg_4h,
         funding_8h=mk.funding_8h, next_funding_ms=mk.next_funding_ms, warm=warm, notes=notes,
+        ema50_1h_falling=m1h["falling"], deep_upper_wicks_24h=deep_up,
     )
 
 
