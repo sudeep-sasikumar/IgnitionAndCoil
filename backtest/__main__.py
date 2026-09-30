@@ -139,6 +139,19 @@ async def prepare(cfg, rest, db, clock, days: int | None, symbols: str | None, m
                      f"{cfg.ignition.min_oi_chg_1h}% and Coil's oi_chg_4h ≥ {cfg.coil.min_oi_chg_4h}% were not "
                      f"applied, and the OI score component was dropped (other components rescaled to 100). "
                      f"<b>Live signals require these, so the backtest fires more often than live would.</b>")
+    # Funding: WEEX serves only the last ~364 days of settlements. Without them every funding
+    # condition would read "n/a" (= fail) and nothing could fire, so switch the group off and say so.
+    fcov = []
+    for s in syms[1:]:
+        ts = [r[0] for r in inp.funding.get(s) or [] if start <= r[0] <= end]
+        fcov.append(min(1.0, (ts[-1] - ts[0]) / period) if len(ts) > 1 else 0.0)
+    f_coverage = sum(fcov) / len(fcov) if fcov else 0.0
+    if f_coverage < 0.8:
+        disabled.add("funding")
+        notes.append(f"<b>Funding conditions DISABLED.</b> WEEX only serves about a year of funding history and it "
+                     f"covers {f_coverage * 100:.0f}% of this period, so Ignition's funding_8h ≤ "
+                     f"{cfg.ignition.max_funding_8h_pct}% and Coil's ≤ {cfg.coil.max_funding_8h_pct}% were not applied "
+                     f"and the funding score component was dropped. Funding P&amp;L is 0 where it is missing.")
     tot = miss = 0
     for s in syms[1:]:
         b5 = inp.bars[s]["5m"]
