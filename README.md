@@ -204,6 +204,20 @@ Each file can be downloaded from the tab.
 
 Findings are evidence to test, not settings to switch on blindly.
 
+**Copying the VPS recordings to this PC (daily, automatic).** `tools\sync_research.py` logs in to the dashboard (`research.sync_url`) and downloads every recorded day you don't have yet into `var\research\vps\`. It always refreshes today's and yesterday's files, because the VPS is still writing them. Your downloads never go to GitHub.
+- **Password:** it uses `DASHBOARD_PASSWORD` from this PC's `.env`, the same one you log in with. Add it there once. It is never shown, logged, or put on a command line.
+- **Safe replacement:** a file is only replaced after the new copy passes an integrity check, so a download interrupted while the VPS is writing never damages your copy.
+- **Schedule:** a Windows scheduled task, **"Ignition & Coil research sync"**, runs it every day at 09:00, or as soon as the PC is on if it was off. It runs under your own account, only while you're logged in, and stores no password.
+- **Log:** `var\logs\research_sync.log`.
+- **Analyse the downloads:** `.venv\Scripts\python.exe -m research.mine --live --dir var\research\vps`.
+
+| To... | Run (PowerShell) |
+|---|---|
+| sync now | `.venv\Scripts\python.exe tools\sync_research.py` |
+| run the scheduled task now | `Start-ScheduledTask -TaskName "Ignition & Coil research sync"` |
+| change the time | Task Scheduler → Task Scheduler Library → the task → Triggers |
+| remove it | `Unregister-ScheduledTask -TaskName "Ignition & Coil research sync" -Confirm:$false` |
+
 ## 5. Your trading model: 20x · Policy S
 
 Chosen on 2026-09-28 from a one-year walk-forward study (full details in `docs\DECISIONS.md`):

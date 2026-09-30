@@ -54,9 +54,10 @@ def load_history(cfg, tags: list[str]) -> pd.DataFrame:
     return pd.concat(parts, ignore_index=True)
 
 
-def load_live(cfg, last_days: int | None = None) -> pd.DataFrame:
+def load_live(cfg, last_days: int | None = None, folder: str | Path | None = None) -> pd.DataFrame:
+    """Recorded days from <data_dir>/research/snapshots (or `folder`, e.g. research/vps downloads)."""
     r = cfg.research
-    files = sorted((Path(cfg.data_dir) / "research" / "snapshots").glob("*.csv.gz"))
+    files = sorted(Path(folder or Path(cfg.data_dir) / "research" / "snapshots").glob("*.csv.gz"))
     files = files[-int(last_days or r.get("mine_last_days", 30)):]
     if not files:
         return pd.DataFrame()
@@ -365,13 +366,14 @@ def main() -> int:
     ap.add_argument("--history", default=None, help="comma-separated history tags, e.g. y2025,y2026")
     ap.add_argument("--live", action="store_true")
     ap.add_argument("--days", type=int, default=None, help="live: most recent N days (default research.mine_last_days)")
+    ap.add_argument("--dir", default=None, help="live: folder of recordings (e.g. var/research/vps from sync_research)")
     ap.add_argument("--config", default=None)
     a = ap.parse_args()
     cfg = load_config(a.config)
     if a.history:
         rep = run(load_history(cfg, a.history.split(",")), cfg, "history")
     else:
-        df = load_live(cfg, a.days)
+        df = load_live(cfg, a.days, a.dir)
         if df.empty:
             print("no live recordings yet")
             return 1

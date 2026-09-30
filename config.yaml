@@ -279,6 +279,7 @@ research:
   mine_daily_at: "00:40"        # London time: nightly pattern report on the recorded days (Research tab)
   min_days_to_mine: 3
   mine_last_days: 30            # nightly report uses the most recent days only (memory on a small VPS)
+  sync_url: https://srv1479428.hstgr.cloud   # tools/sync_research.py downloads the VPS recordings from here
   big_move_pct: 6.0             # a "big move" = price rose this much within 4h (missed-move analysis)
   tp_pct: 3.0                   # label: +tp_pct reached before -sl_pct (4h window), a stop-independent win proxy
   sl_pct: 2.0

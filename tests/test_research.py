@@ -76,3 +76,19 @@ def test_recorder_appends_readable_gzip(tmp_path):
     p = next((tmp_path / "research" / "snapshots").glob("*.csv.gz"))
     df = pd.read_csv(gzip.open(p, "rt"))
     assert list(df["ts"]) == [1, 2] and list(df.columns) == COLUMNS
+
+
+def test_sync_accepts_only_complete_gzip_and_daily_names(tmp_path):
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
+    from sync_research import NAME, gzip_ok
+    good = tmp_path / "a.csv.gz"
+    with gzip.open(good, "wt") as fh:
+        fh.write("x\n" * 1000)
+    with gzip.open(good, "at") as fh:                       # appended member, like the recorder
+        fh.write("y\n")
+    bad = tmp_path / "b.csv.gz"
+    bad.write_bytes(good.read_bytes()[:-8])                 # cut mid-member (download while writing)
+    assert gzip_ok(good) and not gzip_ok(bad)
+    assert NAME.fullmatch("2026-09-30.csv.gz") and not NAME.fullmatch("../x.csv.gz")
