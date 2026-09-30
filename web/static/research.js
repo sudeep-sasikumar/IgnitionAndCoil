@@ -100,6 +100,14 @@ function researchView(app) {
         h("div", { class: "row", style: "flex-wrap:wrap" }, data.files.slice(-30).reverse().map((f) =>
           h("a", { class: "btn small-btn", href: `/api/research/file/${f.name}`, text: `${f.name.replace(".csv.gz", "")} (${(f.bytes / 1e6).toFixed(1)} MB)` }))))
       : h("p", { class: "muted", text: "Recording started - the first file appears after the next 5-minute bar." }));
+    const mk = data.market_files || [];
+    if (data.market_recording || mk.length) {
+      const mb = mk.reduce((a, f) => a + f.bytes, 0) / 1e6;
+      files.append(h("div", { class: "small", style: "margin-top:10px" },
+        h("p", { class: "muted", text: `Whole market (every WEEX perp: funding forecast, open interest, spread, book): ${mk.length} day(s), ${mb.toFixed(1)} MB. NumPy files, one per UTC day.` }),
+        h("div", { class: "row", style: "flex-wrap:wrap" }, mk.slice(-14).reverse().map((f) =>
+          h("a", { class: "btn small-btn", href: `/api/research/file/${f.name}`, text: `${f.name.slice(7, 17)} (${(f.bytes / 1e6).toFixed(1)} MB)` })))));
+    }
   }
   async function load() {
     try { data = await api("/api/research"); } catch (err) { body.replaceChildren(h("p", { class: "neg", text: "Could not load: " + err.message })); return; }

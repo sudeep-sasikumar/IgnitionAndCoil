@@ -27,6 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from core.config import load_config, load_env  # noqa: E402
 
 NAME = re.compile(r"\d{4}-\d{2}-\d{2}(\.[a-z])?\.csv\.gz")   # .b/.c = same day, newer column layout
+MARKET = re.compile(r"market-(\d{4}-\d{2}-\d{2})\.npz")        # whole-market file (research.market)
 log = logging.getLogger("research_sync")
 
 
@@ -41,6 +42,22 @@ def gzip_ok(p: Path) -> bool:
         return False
 
 
+def npz_ok(p: Path) -> bool:
+    """Every array of the day file loads (zip CRCs checked)."""
+    import numpy as np
+    try:
+        with np.load(p, allow_pickle=False) as z:
+            for k in z.files:
+                z[k]
+        return True
+    except Exception:  # noqa: BLE001 - any damage means "not complete"
+        return False
+
+
+def file_ok(p: Path, name: str) -> bool:
+    return npz_ok(p) if name.endswith(".npz") else gzip_ok(p)
+
+
 def download(c: httpx.Client, name: str, dest: Path, tries: int = 3) -> int | None:
     """Fetch one file to a temp name, verify it, then swap it in. Returns bytes, or None."""
     tmp = dest.with_name(dest.name + ".part")
@@ -53,7 +70,7 @@ def download(c: httpx.Client, name: str, dest: Path, tries: int = 3) -> int | No
                 with open(tmp, "wb") as fh:
                     for chunk in r.iter_bytes():
                         fh.write(chunk)
-            if gzip_ok(tmp):
+            if file_ok(tmp, name):
                 os.replace(tmp, dest)
                 return dest.stat().st_size
             log.info("%s: incomplete copy (the VPS was writing it), retry %d", name, attempt)
@@ -99,13 +116,19 @@ def main() -> int:
                 why = ""
             log.error("login to %s failed: HTTP %s %s", a.url, r.status_code, why)
             return 3
-        files = c.get("/api/research").json().get("files", [])
+        listing = c.get("/api/research").json()
+        files = listing.get("files", []) + listing.get("market_files", [])
+        (dest / "market").mkdir(exist_ok=True)
         for f in files:
             name = f["name"]
-            if not NAME.fullmatch(name):
+            m = MARKET.fullmatch(name)
+            if m:
+                local, day = dest / "market" / name, m.group(1)
+            elif NAME.fullmatch(name):
+                local, day = dest / name, name[:10]
+            else:
                 continue
-            local = dest / name
-            fresh = name[:10] in refresh
+            fresh = day in refresh
             if local.exists() and not fresh and local.stat().st_size == f["bytes"]:
                 kept += 1
                 continue

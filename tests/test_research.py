@@ -124,3 +124,33 @@ def test_recorder_starts_a_new_file_when_the_layout_changes(tmp_path):
     rec.write(row["ts"], [row])                               # same layout: keeps appending to .b
     assert not (rec.dir / "2026-10-01.c.csv.gz").exists()
     assert len(pd.read_csv(gzip.open(rec.dir / "2026-10-01.b.csv.gz", "rt"))) == 2
+
+
+def test_market_daystore_grows_and_survives_restart(tmp_path):
+    from research.market import FIELDS, DayStore, book_top
+    p = tmp_path / "market-2026-10-01.npz"
+    s = DayStore(p)
+    s.add(300_000, {"A": {"oi": 10.0, "funding_fc": 0.01}, "B": {"spread": 0.05}})
+    s.add(600_000, {"A": {"oi": 11.0}, "C": {"bid05": 1000.0}})         # a coin joins mid-day
+    s.add(600_000, {"B": {"oi": 5.0}})                                  # same bar again: filled in, not duplicated
+    s.save()
+    r = DayStore(p)                                                     # restart: continues the file
+    assert r.ts == [300_000, 600_000] and r.symbols == ["A", "B", "C"]
+    assert r.cols["oi"].dtype == np.float32 and r.cols["oi"].shape == (2, 3)
+    assert r.cols["oi"][1, 0] == 11.0 and r.cols["oi"][1, 1] == 5.0 and np.isnan(r.cols["oi"][0, 2])
+    assert set(FIELDS) == set(r.cols)
+    sp, bid, ask = book_top([["99.9", "10"], ["98", "5"]], [["100.1", "2"]])
+    assert sp == pytest.approx(0.2) and bid == pytest.approx(999.0) and ask == pytest.approx(200.2)
+
+
+def test_sync_checks_npz_files(tmp_path):
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
+    from sync_research import MARKET, file_ok
+    good = tmp_path / "market-2026-10-01.npz"
+    np.savez_compressed(good, ts=np.arange(3), oi=np.ones((3, 2), np.float32))
+    bad = tmp_path / "bad.npz"
+    bad.write_bytes(good.read_bytes()[:-20])
+    assert file_ok(good, good.name) and not file_ok(bad, "market-2026-10-02.npz")
+    assert MARKET.fullmatch("market-2026-10-01.npz").group(1) == "2026-10-01"

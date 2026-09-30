@@ -292,17 +292,22 @@ def create_app(eng, hub: WebHub) -> FastAPI:
                     except ValueError:
                         pass
             files = [{"name": f.name, "bytes": f.stat().st_size} for f in sorted((base / "snapshots").glob("*.csv.gz"))]
-            return {"reports": reports, "files": files, "recording": eng.recorder is not None}
+            market = [{"name": f.name, "bytes": f.stat().st_size} for f in sorted((base / "market").glob("market-*.npz"))]
+            return {"reports": reports, "files": files, "market_files": market, "recording": eng.recorder is not None,
+                    "market_recording": eng.market is not None}
         return await asyncio.to_thread(load)
 
     @app.get("/api/research/file/{name}")
     async def api_research_file(name: str):
-        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}(\.[a-z])?\.csv\.gz", name):
+        if re.fullmatch(r"\d{4}-\d{2}-\d{2}(\.[a-z])?\.csv\.gz", name):
+            p, media = Path(cfg.data_dir) / "research" / "snapshots" / name, "application/gzip"
+        elif re.fullmatch(r"market-\d{4}-\d{2}-\d{2}\.npz", name):
+            p, media = Path(cfg.data_dir) / "research" / "market" / name, "application/octet-stream"
+        else:
             return JSONResponse({"error": "bad file name"}, status_code=400)
-        p = Path(cfg.data_dir) / "research" / "snapshots" / name
         if not p.exists():
             return JSONResponse({"error": "not found"}, status_code=404)
-        return FileResponse(p, media_type="application/gzip", filename=name)
+        return FileResponse(p, media_type=media, filename=name)
 
     @app.get("/api/symbols")
     async def api_symbols():

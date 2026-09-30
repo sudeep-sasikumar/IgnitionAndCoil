@@ -71,6 +71,10 @@ class Engine:
         if cfg.get("research") and cfg.research.get("record_snapshots"):
             from research.recorder import Recorder
             self.recorder = Recorder(self)
+        self.market = None
+        if cfg.get("research") and cfg.research.get("market_snapshot"):
+            from research.market import MarketRecorder
+            self.market = MarketRecorder(self)
         if cfg.get("highs") and cfg.highs.get("enabled"):
             from highs.service import HighsService
             self.highs = HighsService(self)
@@ -605,6 +609,8 @@ class Engine:
             lines = await self.journal.load_and_catch_up()
             await self.trading.back_online_summary(lines)
             await self.ws.set_symbols(self.tracked)
+            if self.market:
+                self._tasks.append(asyncio.create_task(self.market.loop(), name="market_recorder"))
             if self.recorder:
                 from research.recorder import nightly_loop
                 self._tasks.append(asyncio.create_task(nightly_loop(self), name="research_nightly"))
