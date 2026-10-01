@@ -154,3 +154,21 @@ def test_sync_checks_npz_files(tmp_path):
     bad.write_bytes(good.read_bytes()[:-20])
     assert file_ok(good, good.name) and not file_ok(bad, "market-2026-10-02.npz")
     assert MARKET.fullmatch("market-2026-10-01.npz").group(1) == "2026-10-01"
+
+
+def test_sparse_windows_and_gaps():
+    from data.bars import BarArrays
+    from research.sparse import DAY, SparseCache, active_days, complete_15m, intervals
+    t = np.arange(10, dtype=np.int64) * DAY
+    qv = np.array([1, 1, 3, 3, 1, 1, 1, 6, 1, 1], float) * 1e6
+    # two consecutive days summing >= 5M: days 2-3 (3+3) and 6-7, 7-8 (1+6, 6+1)
+    assert list(active_days(t, qv, 0, 9 * DAY, 5e6) // DAY) == [2, 3, 6, 7, 8]
+    assert intervals(np.array([2, 3, 7]) * DAY, DAY, DAY, 0, 20 * DAY) == [(1 * DAY, 5 * DAY), (6 * DAY, 9 * DAY)]
+    assert SparseCache._missing((0, 100), [(10, 20), (50, 120)]) == [(0, 10), (20, 50)]
+    assert SparseCache._missing((0, 100), [(0, 100)]) == []
+    m5 = 300_000
+    ts = np.array([0, 1, 2, 3, 4, 6, 7, 8], np.int64) * m5          # bar 5 missing: 2nd 15m group incomplete
+    one = np.ones(len(ts))
+    b = BarArrays(t=ts, o=one, h=one, l=one, c=one, v=one, qv=one, tbv=one, tbqv=one, tc=ts + m5)
+    q = complete_15m(b)
+    assert list(q.t) == [0, 6 * m5] and list(q.qv) == [3, 3]
