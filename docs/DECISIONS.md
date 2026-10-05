@@ -187,6 +187,23 @@ Evidence it is not luck: removing them one at a time improves both years at ever
 
 **Decision: stay on WEEX data.** Binance's volume and order flow do not make better signals; its funding adds a small, one-year gain - not worth a live dependency on Binance (reachability from the VPS untested). Revisit with live data if needed.
 
+## Hindsight-free coin pool (2026-10-05)
+
+Every backtest before this one used "today's top 40 coins by volume". That pool is picked with hindsight: coins that are big today are often big because they rallied. `research/pool.py` builds the pool a live scanner would have had instead: every coin listed on WEEX today whose volume on some two consecutive days of the period reached the $5M threshold (382 coins in 2024-25, 427 in 2025-26); the backtester then applies the live universe rules bar by bar. `research/sparse.py` downloads each coin only around the days it could have qualified, with the same lookbacks the scanner keeps. Check: on the old 40 coins it reproduces the full-data backtest exactly (242 trades, +55.1223R, $1,200.20).
+
+Current live system (Coil off, the six Ignition conditions switched off, longs allowed in RISK_OFF, Policy S, $1,000 per trade):
+
+| Pool | 2024-25 | 2025-26 |
+|---|---|---|
+| Today's top 40 (hindsight) | 345 trades, +11.2R, +$701 | 242 trades, +55.1R, +$1,200 |
+| **Coins that could have qualified at the time** | **751 trades on 140 coins, -36.8R (avg -0.049R), 39% wins, +$497** | **367 trades on 87 coins, +35.1R (avg +0.096R), 41% wins, +$820** |
+| - of which coins in today's top 40 | 334 trades, +17.8R, +$793 | 240 trades, +54.4R, +$1,198 |
+| - of which all other coins | 417 trades on 110 coins, -54.5R (avg -0.131R), 37% wins, -$295 | 127 trades on 55 coins, -19.3R (avg -0.152R), 35% wins, -$377 |
+
+**What it means:** the earlier results were inflated by hindsight. On the coins a live scanner would really have traded, the system lost on everything outside today's top 40 in both years; overall it was about break-even in 2024-25 (negative in R, slightly positive in dollars because the winners had wider stops and so more dollars per R) and positive but much weaker in 2025-26. The filter search and the research rules were tuned on the top-40 pool too, so they carry the same bias and need re-checking on this pool before they are trusted.
+
+**Still optimistic:** WEEX only lists current contracts, so coins delisted during the period cannot be tested, and those were probably mostly losers. No setting was changed because of this result.
+
 ## Threshold changes (your decisions)
 
 | Date | Change | Why |
