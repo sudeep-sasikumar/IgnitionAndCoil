@@ -1,7 +1,13 @@
 """Highs tab service: scans the CoinGecko top N every few minutes, detects 52-week-high and
 all-time-high breaks (highs.detector), records them, alerts on Telegram and feeds the dashboard.
 
-Two loops share one paced CoinGecko client:
+Every break also carries its PEAK: the highest price since the break (how far it ran). It is
+updated at every scan for highs.peak_track_days from the price, CoinGecko's 24h high and its ATH.
+Breaks we did not watch from the start (recorded before this existed, or the scanner was down
+for most of a day) are filled once from CoinGecko candles by peak_loop.
+
+Three loops share one paced CoinGecko client:
+- peak_loop: one request per coin, only when a break's peak has to be filled from candles
 - scan_loop: /coins/markets for the top N (8 requests for 2,000 coins) every highs.scan_min
 - history_loop: a year of OHLC candles per coin (one request each, best-ranked first) - needed
   for the 52-week high. With the keyless API that takes hours for 2,000 coins; ATH breaks are
@@ -17,10 +23,11 @@ from pathlib import Path
 from core.config import load_env
 from highs import store
 from highs.coingecko import CoinGecko, parse_iso_ms
-from highs.detector import ATH, DAY, CoinState, Obs, check, excluded, merge_candles, update
+from highs.detector import ATH, DAY, CoinState, Obs, check, excluded, merge_candles, ohlc_days, peak_after, update
 
 log = logging.getLogger("highs")
 STALE_HIST = 5 * DAY          # reload candles after a gap in our own daily observations (candles are 4-day)
+WATCH_GAP = 23 * 3_600_000    # a longer gap between two scans of a coin is not covered by its 24h high
 
 
 def fmt_usd(x: float | None) -> str:
@@ -63,13 +70,80 @@ class HighsService:
         self.last_scan_ms = 0
         self.last_error: str | None = None
         self.stables = {s.upper() for s in self.cfg.universe.stablecoin_bases}
+        self.track_ms = int(float(h.get("peak_track_days", 30)) * DAY)
+        self.tracked: dict[str, list[dict]] = {}   # cg_id -> its breaks whose peak is still followed
+        self.refill: dict[str, None] = {}          # coins whose peaks need candles (ordered set)
 
     def load(self) -> None:
         for cg_id, (st, row) in store.load_states(self.db).items():
             self.states[cg_id] = st
             self.meta[cg_id] = {"rank": row.rank, "price": row.price, "market_cap": row.market_cap,
-                                "volume": row.volume}
-        log.info("highs: %d coins loaded from the database", len(self.states))
+                                "volume": row.volume, "updated_ms": row.updated_ms}
+        for e in store.peak_events(self.db, self.eng.clock.now_ms() - self.track_ms):
+            self.tracked.setdefault(e.cg_id, []).append(
+                {"id": e.id, "ts": e.ts, "base": max(e.level, e.price), "peak": e.peak, "peak_ms": e.peak_ms})
+            if e.peak is None:
+                self.refill[e.cg_id] = None
+        log.info("highs: %d coins loaded from the database, %d coins with breaks to fill a peak for",
+                 len(self.states), len(self.refill))
+
+    # ---- peak since the break -----------------------------------------------------------------
+    def track_peaks(self, cg_id: str, ob: Obs, now: int, prev_seen_ms: int) -> dict[int, tuple[float, int]]:
+        """New peaks for this coin's followed breaks, from one observation."""
+        out: dict[int, tuple[float, int]] = {}
+        evs = self.tracked.get(cg_id)
+        if not evs:
+            return out
+        if now - prev_seen_ms > WATCH_GAP:
+            self.refill[cg_id] = None
+        hi = max(ob.price, ob.high_24h or 0.0)   # the 24h high may reach back before the break, where
+        for t in evs:                            #   price was below the old high: it cannot overstate
+            if t["peak"] is None or now > t["ts"] + self.track_ms:
+                continue                         # not filled yet (peak_loop) / no longer followed
+            best = (t["peak"], t["peak_ms"])
+            if hi > best[0]:
+                best = (hi, now)
+            if ob.ath is not None and ob.ath_ms and ob.ath_ms >= t["ts"] and ob.ath >= best[0]:
+                best = (float(ob.ath), ob.ath_ms)        # CoinGecko's exact record and its time
+            if best != (t["peak"], t["peak_ms"]):
+                t["peak"], t["peak_ms"] = best
+                out[t["id"]] = best
+        return out
+
+    def fill_peaks(self, cg_id: str, candles: list[list[float]]) -> dict[int, tuple[float, int]]:
+        """Peaks for this coin's breaks from OHLC candles (never lowers a peak already seen)."""
+        out: dict[int, tuple[float, int]] = {}
+        for t in self.tracked.get(cg_id, []):
+            best = (t["base"], t["ts"]) if t["peak"] is None else (t["peak"], t["peak_ms"])
+            c = peak_after(candles, t["ts"], t["ts"] + self.track_ms)
+            if c and c[0] > best[0]:
+                best = c
+            if best != (t["peak"], t["peak_ms"]):
+                t["peak"], t["peak_ms"] = best
+                out[t["id"]] = best
+        return out
+
+    async def peak_loop(self) -> None:
+        while True:
+            if not self.refill:
+                await asyncio.sleep(60)
+                continue
+            cg_id = next(iter(self.refill))
+            evs = self.tracked.get(cg_id)
+            if not evs:
+                self.refill.pop(cg_id, None)
+                continue
+            try:
+                candles = await self.cg.ohlc(cg_id, ohlc_days(self.eng.clock.now_ms() - min(t["ts"] for t in evs)))
+            except Exception as e:  # noqa: BLE001 - try the other coins first, this one again later
+                log.warning("highs: peak candles for %s failed: %s", cg_id, e)
+                self.refill.pop(cg_id, None)
+                self.refill[cg_id] = None
+                await asyncio.sleep(60)
+                continue
+            self.refill.pop(cg_id, None)
+            peaks = self.fill_peaks(cg_id, candles if isinstance(candles, list) else [])
+            await asyncio.to_thread(store.set_peaks, self.db, peaks)
 
     def weex_symbol(self, symbol: str) -> str | None:
         s = f"{symbol.upper()}USDT"
@@ -82,6 +156,7 @@ class HighsService:
         rows = await self.cg.top(int(h.top_n))
         events: list[dict] = []
         coin_rows: list[dict] = []
+        peaks: dict[int, tuple[float, int]] = {}
         top: list[str] = []
         for r in rows:
             cg_id, price = r.get("id"), r.get("current_price")
@@ -95,25 +170,33 @@ class HighsService:
             first_seen = cg_id not in self.states
             ob = Obs(float(price), r.get("high_24h"), r.get("ath"), parse_iso_ms(r.get("ath_date")))
             breaks = [] if first_seen else check(st, ob, now, h.min_high_age_days, h.min_history_days)
+            peaks.update(self.track_peaks(cg_id, ob, now, self.meta.get(cg_id, {}).get("updated_ms") or 0))
             update(st, ob, now)
             st.symbol, st.name = sym, name
             self.states[cg_id] = st
             m = {"rank": r.get("market_cap_rank"), "price": float(price), "market_cap": r.get("market_cap"),
-                 "volume": r.get("total_volume")}
+                 "volume": r.get("total_volume"), "updated_ms": now}
             self.meta[cg_id] = m
             coin_rows.append({"cg_id": cg_id, "symbol": sym, "name": name, **m, "ath": st.ath, "ath_ms": st.ath_ms,
-                              "hist": st.hist, "hist_ok": st.hist_ok, "hist_ms": st.hist_ms, "updated_ms": now})
+                              "hist": st.hist, "hist_ok": st.hist_ok, "hist_ms": st.hist_ms})
             for b in breaks:
                 events.append({"cg_id": cg_id, "symbol": sym.upper(), "name": name, "rank": m["rank"], "kind": b.kind,
                                "ts": now, "price": float(price), "level": float(b.level), "prev_high": float(b.prev_high),
                                "prev_high_ms": b.prev_high_ms, "market_cap": m["market_cap"], "volume": m["volume"],
-                               "weex_symbol": self.weex_symbol(sym)})
+                               "weex_symbol": self.weex_symbol(sym),
+                               "peak": max(float(b.level), float(price)), "peak_ms": now})
         self.top_ids = top
         await asyncio.to_thread(store.save_coins, self.db, coin_rows)
+        await asyncio.to_thread(store.set_peaks, self.db, peaks)
+        for cg_id in [c for c, v in self.tracked.items()             # stop following the old ones
+                      if all(t["peak"] is not None and now > t["ts"] + self.track_ms for t in v)]:
+            del self.tracked[cg_id]
         if events:
             ids = await asyncio.to_thread(store.add_events, self.db, events)
             for e, i in zip(events, ids):
                 e["id"] = i
+                self.tracked.setdefault(e["cg_id"], []).append(
+                    {"id": i, "ts": now, "base": e["peak"], "peak": e["peak"], "peak_ms": now})
             await self.alert(events, now)
         self.last_scan_ms = now
         return events
@@ -180,7 +263,8 @@ class HighsService:
             await asyncio.to_thread(store.save_coins, self.db, [{
                 "cg_id": cg_id, "symbol": st.symbol, "name": st.name, "rank": m.get("rank"), "price": m.get("price"),
                 "market_cap": m.get("market_cap"), "volume": m.get("volume"), "ath": st.ath, "ath_ms": st.ath_ms,
-                "hist": st.hist, "hist_ok": st.hist_ok, "hist_ms": st.hist_ms, "updated_ms": now}])
+                "hist": st.hist, "hist_ok": st.hist_ok, "hist_ms": st.hist_ms,
+                "updated_ms": m.get("updated_ms") or now}])
 
     # ---- dashboard -------------------------------------------------------------------------
     def view(self) -> dict:
@@ -196,6 +280,10 @@ class HighsService:
                         "prev_high": e.prev_high, "prev_high_ms": e.prev_high_ms, "price": cur,
                         "since_break_pct": (cur / e.price - 1) * 100 if cur else None,
                         "vs_old_high_pct": (cur / e.prev_high - 1) * 100 if cur and e.prev_high else None,
+                        "peak": e.peak, "peak_ms": e.peak_ms,
+                        "runup_pct": (e.peak / e.prev_high - 1) * 100 if e.peak and e.prev_high else None,
+                        "runup_from_alert_pct": (e.peak / e.price - 1) * 100 if e.peak and e.price else None,
+                        "off_peak_pct": (min(cur / e.peak, 1.0) - 1) * 100 if cur and e.peak else None,
                         "market_cap": m.get("market_cap") or e.market_cap, "volume": m.get("volume") or e.volume,
                         "weex_symbol": e.weex_symbol, "alert": e.alert_status})
         ready = sum(1 for c in self.top_ids if self.states.get(c) and self.states[c].hist_ok)
@@ -212,7 +300,8 @@ class HighsService:
                 "status": {"top_n": int(h.top_n), "tracked": len(self.top_ids), "history_ready": ready,
                            "last_scan_ms": self.last_scan_ms, "scan_min": float(h.scan_min), "keyed": self.keyed,
                            "error": self.last_error, "min_high_age_days": float(h.min_high_age_days),
-                           "show_days": int(h.show_days)}}
+                           "show_days": int(h.show_days), "peak_track_days": self.track_ms / DAY,
+                           "peaks_pending": sum(1 for v in self.tracked.values() for t in v if t["peak"] is None)}}
 
 
 def alert_text(events: list[dict], now: int, top_n: int, base_url: str, more: bool) -> str:

@@ -617,7 +617,8 @@ class Engine:
             if self.highs:
                 await asyncio.to_thread(self.highs.load)
                 self._tasks += [asyncio.create_task(self.highs.scan_loop(), name="highs_scan"),
-                                asyncio.create_task(self.highs.history_loop(), name="highs_history")]
+                                asyncio.create_task(self.highs.history_loop(), name="highs_history"),
+                                asyncio.create_task(self.highs.peak_loop(), name="highs_peaks")]
             self._tasks += [asyncio.create_task(c(), name=c.__name__) for c in (
                 self.bar_loop, self.universe_loop, self.oi_loop, self.premium_loop,
                 self.clock_loop, self.watchdog_loop, self.tg.poll_commands, self.trading.track_loop,

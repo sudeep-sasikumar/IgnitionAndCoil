@@ -116,6 +116,7 @@ class Database:
         import data.trade_db  # noqa: F401  (registers the trade tables)
         import highs.store  # noqa: F401  (registers the Highs tab tables)
         Base.metadata.create_all(self.engine)
+        highs.store.migrate(self.engine)
         self.url = url
         self.Session = sessionmaker(self.engine, expire_on_commit=False)
 

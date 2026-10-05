@@ -111,6 +111,28 @@ def merge_candles(st: CoinState, candles: list[list[float]], now_ms: int) -> Non
     st.hist_ok, st.hist_ms = True, now_ms
 
 
+def peak_after(candles: list[list[float]], since_ms: int, until_ms: int | None = None) -> tuple[float, int] | None:
+    """Highest high (and its candle's close time) among OHLC rows [ts, o, h, l, c] that closed after
+    since_ms and not after until_ms. CoinGecko stamps a candle with its CLOSE time, so the first
+    candle counted contains the break itself; the part of it before the break traded below the
+    old high, so it cannot overstate the peak."""
+    best = None
+    for row in candles:
+        ts, hi = int(row[0]), float(row[2])
+        if ts > since_ms and (until_ms is None or ts <= until_ms) and (best is None or hi > best[0]):
+            best = (hi, ts)
+    return best
+
+
+def ohlc_days(age_ms: int) -> int:
+    """Smallest CoinGecko OHLC range covering age_ms (1 day = 30-minute candles, up to 30 days =
+    4-hour candles, beyond that 4-day candles)."""
+    for d in (1, 7, 14, 30, 90, 180):
+        if age_ms + 3_600_000 <= d * DAY:
+            return d
+    return 365
+
+
 def excluded(name: str, symbol: str, stable_bases: set[str], keywords: list[str]) -> bool:
     """Stablecoins and wrapped / bridged / staked copies of other coins."""
     n = name.lower()

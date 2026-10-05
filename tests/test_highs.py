@@ -2,8 +2,10 @@
 import numpy as np
 import pytest
 
-from highs.detector import ATH, DAY, H52, CoinState, Obs, check, excluded, high_52w, merge_candles, update
-from highs.service import alert_text
+from highs import store
+from highs.detector import (ATH, DAY, H52, CoinState, Obs, check, excluded, high_52w, merge_candles, ohlc_days,
+                            peak_after, update)
+from highs.service import HighsService, alert_text
 from highs.study import find_events, outcome
 
 NOW = 2_000 * DAY + 12 * 3_600_000
@@ -77,6 +79,87 @@ def test_alert_text():
     t = alert_text(e, NOW, 2000, "https://x.test", False)
     assert "🚀 ATH SOL #6 $245.100" in t and "old ATH $240.000 (1.1y ago)" in t and "WEEX SOLUSDT" in t
     assert "📈 52W ARB #58" in t and "(40d ago)" in t and t.endswith("https://x.test/highs")
+
+
+# ---- peak since the break ----------------------------------------------------------------------
+
+H4 = 4 * 3_600_000
+
+
+def test_peak_after_counts_only_candles_closed_after_the_break():
+    t0 = NOW - 2 * DAY
+    candles = [[t0 - H4, 1, 99.0, 1, 1], [t0, 1, 50.0, 1, 1], [t0 + H4, 1, 12.0, 1, 1], [t0 + 2 * H4, 1, 14.5, 1, 1],
+               [t0 + 3 * H4, 1, 13.0, 1, 1]]
+    assert peak_after(candles, t0) == (14.5, t0 + 2 * H4)            # the candle closing AT the break is before it
+    assert peak_after(candles, t0, t0 + H4) == (12.0, t0 + H4)       # tracking window ended
+    assert peak_after(candles, t0 + 3 * H4) is None
+    assert [ohlc_days(int(d * DAY)) for d in (0.5, 0.99, 5, 6.99, 13, 29, 60, 170, 300)] == [1, 7, 7, 14, 14, 30, 90, 180, 365]
+
+
+class _Eng:
+    def __init__(self, cfg, db):
+        self.cfg, self.db = cfg, db
+        self.clock = type("C", (), {"now_ms": staticmethod(lambda: NOW)})()
+        self.universe = type("U", (), {"exchange_symbols": set()})()
+
+
+def _event(db, ts, level=11.0, price=10.9, **over):
+    e = {"cg_id": "x", "symbol": "XYZ", "name": "XYZ Coin", "rank": 5, "kind": H52, "ts": ts, "price": price,
+         "level": level, "prev_high": 10.0, "prev_high_ms": ts - 30 * DAY, "market_cap": 1e9, "volume": 1e7,
+         "weex_symbol": None, **over}
+    return store.add_events(db, [e])[0]
+
+
+def test_peaks_are_followed_live_and_filled_for_older_records(cfg, tmp_path):
+    from data.db import Database
+    db = Database(f"sqlite:///{tmp_path / 'h.db'}")
+    old = _event(db, NOW - 3 * DAY)                                   # recorded before peaks existed
+    new = _event(db, NOW - DAY, level=12.0, price=12.0, peak=12.0, peak_ms=NOW - DAY)
+    svc = HighsService(_Eng(cfg, db))
+    svc.load()
+    assert list(svc.refill) == ["x"]
+    # live: the older record waits for its candles; the followed one takes the 24h high
+    got = svc.track_peaks("x", Obs(12.5, 13.0, 50.0, NOW - 900 * DAY), NOW, NOW - 600_000)
+    assert got == {new: (13.0, NOW)}
+    assert svc.track_peaks("x", Obs(12.0, 12.9, 50.0, NOW - 900 * DAY), NOW + 600_000, NOW) == {}     # no new peak
+    # candles: each record only counts candles after its own break; a peak already seen is never lowered
+    t0 = NOW - 3 * DAY
+    candles = [[t0 - H4, 1, 30.0, 1, 1], [t0 + H4, 1, 15.0, 1, 1], [NOW - DAY + H4, 1, 12.2, 1, 1]]
+    got = svc.fill_peaks("x", candles)
+    assert got == {old: (15.0, t0 + H4)}
+    store.set_peaks(db, got)
+    rows = {e.id: e for e in store.events_since(db, 0)}
+    assert rows[old].peak == 15.0 and rows[old].peak_ms == t0 + H4 and rows[new].peak == 12.0
+    # a new all-time high after the break: CoinGecko's exact value and time win
+    got = svc.track_peaks("x", Obs(15.5, 15.8, 16.0, NOW + 3_600_000), NOW + 7_200_000, NOW + 600_000)
+    assert got == {old: (16.0, NOW + 3_600_000), new: (16.0, NOW + 3_600_000)}
+    # not watched for a day: the 24h high cannot cover the gap, so candles are requested again
+    svc.refill.clear()
+    svc.track_peaks("x", Obs(1.0, 1.0, 16.0, NOW + 3_600_000), NOW + 3 * DAY, NOW + 7_200_000)
+    assert list(svc.refill) == ["x"]
+    # followed for highs.peak_track_days only
+    assert svc.track_peaks("x", Obs(99.0, 99.0, 16.0, NOW + 3_600_000), NOW + 40 * DAY, NOW + 40 * DAY - 600_000) == {}
+
+
+def test_peak_columns_are_added_to_an_existing_database(tmp_path):
+    from sqlalchemy import create_engine, inspect, text
+
+    from data.db import Database
+    url = f"sqlite:///{tmp_path / 'old.db'}"
+    eng = create_engine(url)
+    with eng.begin() as con:                                           # the table as created before peaks existed
+        con.execute(text("CREATE TABLE highs_events (id INTEGER PRIMARY KEY, cg_id VARCHAR(128), symbol VARCHAR(64), "
+                         "name VARCHAR(256), rank INTEGER, kind VARCHAR(8), ts BIGINT, price FLOAT, level FLOAT, "
+                         "prev_high FLOAT, prev_high_ms BIGINT, market_cap FLOAT, volume FLOAT, weex_symbol VARCHAR(32), "
+                         "alert_status VARCHAR(16))"))
+        con.execute(text("INSERT INTO highs_events (cg_id, symbol, name, kind, ts, price, level, prev_high) "
+                         "VALUES ('x', 'XYZ', 'XYZ Coin', '52W', 1000, 10.9, 11.0, 10.0)"))
+    eng.dispose()
+    db = Database(url)
+    assert {"peak", "peak_ms"} <= {c["name"] for c in inspect(db.engine).get_columns("highs_events")}
+    (e,) = store.peak_events(db, 10 ** 15)                              # old and never filled: still returned
+    assert e.peak is None and e.level == 11.0
+    Database(url)                                                       # running it again changes nothing
 
 
 # ---- study -------------------------------------------------------------------------------------

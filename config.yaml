@@ -265,6 +265,7 @@ highs:
                                 #   breakout, not a trend printing new highs every day
   min_history_days: 300         # 52-week high needs this much price history (younger coins: ATH only)
   show_days: 14                 # breaks listed on the Highs tab
+  peak_track_days: 30           # follow each break's peak (highest price since the break) this long
   telegram: true
   alert_min_volume_usd: 0       # leave coins trading less than this (24h, USD) out of Telegram (0 = all)
   max_lines_per_alert: 20

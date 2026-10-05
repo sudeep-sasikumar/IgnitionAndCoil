@@ -28,7 +28,7 @@ function highsView(app) {
   })));
   app.append(h("div", { class: "stack" },
     h("div", {}, h("div", { class: "toolbar" }, h("h2", { text: "New highs", style: "margin:0" }), kindBtns, search), status, wrap,
-      h("p", { class: "faint small", text: "CoinGecko top coins (stablecoins and wrapped / staked copies left out). A break counts when price trades above a high that is at least a week old: ATH = CoinGecko's all-time high, 52W = the highest high of the last 365 days (not an ATH). \"vs old high\" below 0% = the breakout failed so far." })),
+      h("p", { class: "faint small", text: "CoinGecko top coins (stablecoins and wrapped / staked copies left out). A break counts when price trades above a high that is at least a week old: ATH = CoinGecko's all-time high, 52W = the highest high of the last 365 days (not an ATH). \"vs old high\" below 0% = the breakout failed so far. \"Peak since\" = the highest price since the break (hover for when), \"Max run-up\" = that peak vs the old high, \"Off peak\" = how far price is below the peak now." })),
     h("div", { class: "card" }, h("h2", { text: "What happened after past breaks" }), studyBox)));
 
   let data = null;
@@ -41,6 +41,7 @@ function highsView(app) {
       h("span", { title: "A year of price history per coin is needed for the 52-week high; it loads a few coins per minute (all-time highs work immediately)" },
         `52-week history loaded for ${st.history_ready.toLocaleString("en-GB")}/${st.tracked.toLocaleString("en-GB")}`),
       st.keyed ? "" : " · keyless CoinGecko API",
+      st.peaks_pending ? ` · loading the peak of ${st.peaks_pending} earlier break(s)` : "",
       st.error ? h("span", { class: "neg", text: " · last scan failed: " + st.error }) : "");
     let rows = data.events.filter((e) => (HS.kind === "ALL" || e.kind === HS.kind) &&
       (!HS.q || e.symbol.toLowerCase().includes(HS.q) || e.name.toLowerCase().includes(HS.q)));
@@ -49,9 +50,11 @@ function highsView(app) {
         `No breaks in the last ${st.show_days} days yet. The first scan only records each coin's highs; breaks are detected from the next scan on.` }));
       return;
     }
-    const head = ["Time (London)", "Coin", "Rank", "Type", "Old high", "Set", "New high", "Now", "Since break", "vs old high", "Mkt cap", "Vol 24h", "Links"];
+    const head = ["Time (London)", "Coin", "Rank", "Type", "Old high", "Set", "New high", "Peak since", "Max run-up", "Now", "Since break", "vs old high", "Off peak", "Mkt cap", "Vol 24h", "Links"];
+    const tips = { "Peak since": "Highest price since the break", "Max run-up": "Peak vs the old high: how far it ran above the level it broke",
+      "Since break": "Now vs the price when the break was detected", "vs old high": "Now vs the old high", "Off peak": "Now vs the peak: how much of the run it has given back" };
     wrap.replaceChildren(h("table", {},
-      h("thead", {}, h("tr", {}, head.map((t, i) => h("th", { class: i < 2 || i === 12 ? "left" : "", text: t })))),
+      h("thead", {}, h("tr", {}, head.map((t, i) => h("th", { class: i < 2 || i === head.length - 1 ? "left" : "", title: tips[t] || null, text: t })))),
       h("tbody", {}, rows.map((e) => h("tr", {},
         h("td", { class: "left num", text: when(e.ts) }),
         h("td", { class: "left" }, h("b", { text: e.symbol }), " ", h("span", { class: "muted small", text: e.name })),
@@ -60,9 +63,12 @@ function highsView(app) {
         h("td", { class: "num", text: price(e.prev_high) }),
         h("td", { class: "num muted", title: when(e.prev_high_ms), text: ago(e.prev_high_ms) + " ago" }),
         h("td", { class: "num", text: price(e.level) }),
+        h("td", { class: "num", title: e.peak_ms ? "Peak " + when(e.peak_ms) : "Loading from CoinGecko candles", text: price(e.peak) }),
+        h("td", { title: isNum(e.runup_from_alert_pct) ? sgn(e.runup_from_alert_pct, 1, "%") + " from the price at the alert" : null }, pctCell(e.runup_pct)),
         h("td", { class: "num", text: price(e.price) }),
         h("td", {}, pctCell(e.since_break_pct)),
         h("td", {}, pctCell(e.vs_old_high_pct)),
+        h("td", {}, pctCell(e.off_peak_pct)),
         h("td", { class: "num", text: usd(e.market_cap) }),
         h("td", { class: "num", text: usd(e.volume) }),
         h("td", { class: "left" },

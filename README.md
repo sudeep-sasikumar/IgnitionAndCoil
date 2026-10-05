@@ -172,6 +172,9 @@ The **Highs** tab lists coins in the CoinGecko top 2,000 that broke their **all-
 
 - **What counts as a break:** price trades above a high that is at least **7 days old**. A coin already trending at new highs every day counts once, not every scan. An ATH break is shown as ATH only.
 - **Left out:** stablecoins, plus wrapped, bridged and staked copies of other coins.
+- **How far it ran:** each break shows its **Peak since** (the highest price since the break), **Max run-up** (that peak vs the old high) and **Off peak** (how far price is below the peak now).
+  - The peak is updated at every scan for 30 days (`highs.peak_track_days`).
+  - Breaks recorded before this existed, or missed while the scanner was off for most of a day, are filled automatically from CoinGecko candles (one request per coin; "–" until loaded).
 - **Data:** CoinGecko's free public API; every 10 minutes it fetches all 2,000 coins' prices and ATHs.
 - **Warm-up:**
   - The first scan only records each coin's highs.
