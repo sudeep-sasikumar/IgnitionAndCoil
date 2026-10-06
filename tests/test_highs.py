@@ -193,3 +193,57 @@ def test_study_outcome():
     d = _daily([10.0] * 100, [10.0] * 40 + [12.0] * 60)
     o = outcome(d, 40, 11.0, {})
     assert o["ret"][1] == pytest.approx(0.0) and o["held30"] and not o["failed3"]
+
+
+# ---- breakout study (intraday) ---------------------------------------------------------------------
+
+def test_breakout_study_breaks_follow_the_live_rules():
+    from highs.breakout_study import find_breaks
+    n = 800
+    d = np.zeros((n, 7))
+    d[:, 0] = np.arange(n) * DAY
+    d[:, 2] = 10.0                                   # highs
+    d[100, 2] = 50.0                                 # all-history high, later more than a year old
+    d[600, 2] = 20.0                                 # above a year of 10s (day 100 has left the window): 52W
+    d[700, 2] = 21.0                                 # breaks the 52-week high (100 days old): 52W
+    d[703, 2] = 22.0                                 # above day 700's high, only 3 days old: a trend, no event
+    d[750, 2] = 60.0                                 # above the all-history high (650 days old): AH
+    d[752, 2] = 61.0                                 # the all-history high is 2 days old: no event
+    assert find_breaks(d, 7) == [(600, "52W", 10.0, 235), (700, "52W", 20.0, 600), (750, "AH", 50.0, 100)]
+    d2 = d.copy()
+    d2[400:, 0] += 5 * DAY                           # a 5-day gap in the history: the year around it is skipped
+    assert [e[0] for e in find_breaks(d2, 7)] == []
+    d2[:, 0] = np.arange(n) * DAY
+    assert find_breaks(d2[:300], 7) == []            # a pair needs a year of history
+
+
+def test_breakout_study_measures_and_races():
+    from highs.breakout_report import Set
+    from highs.breakout_study import DN, H5, UP, measure
+    k, n = 30, 30 + 1 + H5["48h"]
+    m5 = np.zeros((n, 7))
+    m5[:, 0] = np.arange(n) * 300_000
+    m5[:, 1:5] = 100.0
+    m5[:, 5] = 1.0
+    m5[k + 3, 2] = 102.5                             # +2.5% after 3 bars
+    m5[k + 10, 3] = 96.5                             # -3.5% after 10 bars
+    m5[k + 20, 2] = 111.0                            # +11% after 20 bars (the peak)
+    m5[-1, 4] = 101.0
+    h1 = np.zeros((0, 7))
+    o = measure(m5, h1, k, old=99.0)
+    assert o["mfe_48h"] == 11.0 and o["mae_48h"] == -3.5 and o["t_peak48"] == 19 and o["dip_before_peak48"] == -3.5
+    assert o["up48"][UP.index(2)] == 2 and o["up48"][UP.index(10)] == 19 and o["up48"][UP.index(15)] == -1
+    assert o["dn48"][DN.index(3)] == 9 and o["dn48"][DN.index(4)] == -1 and o["below_old48"] == -1
+    assert o["ret_48h"] == 1.0 and o["gap"] == pytest.approx(1.0101, abs=1e-3) and "mfe_30d" not in o
+    assert measure(m5[:k + 200], h1, k, old=99.0) is None           # trading stopped inside the 48 hours
+    costs = {"win": 0.13, "loss": 0.22}
+    s = Set([{"t": 0, "d0": o}], "d0", costs)
+    res, code = s.race(2, 3)                         # +2% came first
+    assert code[0] == 1 and res[0] == pytest.approx(2 - 0.13 - 0.01 * (3 * 5 / 60) / 8)
+    res, code = s.race(10, 3)                        # -3% came before +10%
+    assert code[0] == -1 and res[0] == pytest.approx(-3 - 0.22 - 0.01 * (10 * 5 / 60) / 8)
+    res, code = s.race(15, 4)                        # neither: closed after 48h at +1%
+    assert code[0] == 0 and res[0] == pytest.approx(1 - 0.22 - 0.01 * 48 / 8)
+    m5[k + 3, 3] = 96.0                              # target and stop in the same candle: the stop is assumed
+    res, code = Set([{"t": 0, "d0": measure(m5, h1, k, old=99.0)}], "d0", costs).race(2, 3)
+    assert code[0] == -1

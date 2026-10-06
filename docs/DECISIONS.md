@@ -139,6 +139,28 @@ Shorts lose under both regime rules (Ignition short −0.24R over 74 trades; Coi
 
 **Study result (2026-09-30, 327 coins, 142 ATH + 341 52W breaks since 2017):** after 30 days the median ATH break was +1.1% (vs −4.8% for any day, same coins) and the median 52W break −5.8%; averages are far higher (+39.8% / +6.5%) because a few coins ran hundreds of percent, mostly in 2021. Breaks worked in bull years (2021) and failed otherwise (2024–2026 medians −10% to −22% at 30 days); top-100 coins did better than small caps; breaks while BTC was below its 200-day average did badly. About 40% closed back below the old high within 3 days.
 
+## Breakout study: can the run after a new high be traded at 20x? (2026-10-06)
+
+Question: the Highs tab shows most coins running a few percent above the old high before pulling back - is that tradeable at 20x? `highs/breakout_study.py` (full tables: `highs/breakout_report_snapshot.txt`).
+
+| Topic | Decision | Why |
+|---|---|---|
+| Data | Binance spot, every USDT pair ever listed including 254 delisted ones (free public data). Breaks by the live rules (all-history high first, else 52-week high; old high >= 7 days old; a year of history). 1,300 breaks on 305 coins, 2019-03 to 2026-10. | The live recording has 33 breaks: too few. Delisted pairs remove most survivorship bias. |
+| Entry | Close of the first 5-minute candle that trades above the old high (the live alert arrives within 10 minutes); also 15 min, 1 h and 4 h later, and a buy-stop order resting at the old high. | The alert is not instant, so the delay had to be measured. |
+| Control | For every break, a random other coin at the same moment that is not breaking. | Separates "breakouts" from "it was a bull market". |
+| Costs | config.yaml fees: 0.13% of the position when a target fills, 0.22% otherwise, funding 0.01% per 8h. Target and stop in the same candle = the stop. 90% ranges by resampling calendar months. | 205 of the breaks fall in March 2024 alone: events are not independent. |
+| Futures | Funding (877 breaks; median 0.018% per interval at the break, above the 0.01% assumed) and 5-minute open interest (566, from December 2021) from data.binance.vision. | Asked for; open interest history does not exist earlier. |
+
+**Result (no setting changed):**
+- **The run-up is real but so is the dip.** Within 48 hours 82% of breaks reached +3% from the entry and 81% touched -3%; median best +11.8%, median worst -9.5%, median end -0.8% (control: +5.3% / -5.2%). Which came first is a coin flip: +3% before -3% in 50% of cases = -0.12% of the position per trade after costs, about -2.4% of the margin per trade at 20x. A quarter of the breaks dipped 6.9% or more BEFORE their 48-hour peak, beyond a 20x liquidation.
+- **Small targets lose, large targets only look good on paper.** +2 or +3% targets lose with every stop. +10% target / -4% stop made +0.64% of the position per trade [+0.29..+0.91], both halves - but only entering within 5 minutes: 15 minutes later +0.20 [-0.11..+0.51], 1 hour +0.24, 4 hours +0.06. All of it comes from the 6% of trades that reached +10% within 15 minutes of the alert (without them +0.07), and it is gone with 0.3% extra slippage per market fill. 32% of trades win (+197% of the margin), 61% are stopped (-84%), up to 20 losers in a row. A buy-stop order resting at the old high showed no profit under the pessimistic reading 5-minute candles allow (-0.03%); 1-minute data would be needed to settle it.
+- **30 days:** median best run +35%, 20% of breaks doubled, but median worst -25% and median end -3%. Wide-stop / big-target exits were profitable until late 2023 and not distinguishable from zero since.
+- **Timing:** the 48-hour peak comes after a median 12 hours, the 30-day peak on day 7 (27% on day one). 74% of breaks close back under the old high within the first hour, so a retest says nothing; about half are above it after 24 hours and after 30 days.
+- **What the big runners had in common at the alert** (same sign in both halves, all modest): doubling within 30 days (20% overall) - all-history highs 28% vs 52-week 16%, the most volatile fifth 36% vs 14%, coins already up more than ~90% in 30 days 27-30% vs 9% for those up less than 36%. Reaching +30% (56% overall) - smaller coins, strong 7-day momentum, NOT many days spent just under the high (42% vs ~60%). Open interest rising in the 4 hours before the break: +10% before -4% in 27-37% of cases vs 18% when it was flat or falling. Bitcoin below its 200-day average (87 breaks): clearly worse.
+- **What predicted nothing:** whether a break would still be 20%+ higher after 30 days (32% overall) - no measure. The state after 1 h, 4 h or 24 h (above the old high, up, volume holding) - the rest of the path looked the same either way.
+
+**Limits:** Binance spot coins are more liquid than most of the CoinGecko top 2,000 the tab scans, and only coins with a perp can be traded with leverage (9 of the 33 live breaks had a WEEX ticker match, by ticker only - OPENAI on WEEX is priced differently from CoinGecko's OPENAI, so some matches are different assets). "All-history high" is the highest price in Binance's history, not necessarily the coin's true ATH. 39 breaks (3%) could not be measured because trading stopped within 48 hours.
+
 ## RISK_OFF longs test (2026-09-30)
 
 `signals.suppress_longs_in_risk_off` (default **true** = unchanged). 20x · Policy S, $1,000, same 40 coins; OI conditions off (no history); the older year also has the funding filter off (WEEX serves ~1 year of funding) - the recent year replayed without it changed little (+0.13R → +0.11R), so the comparison holds.
