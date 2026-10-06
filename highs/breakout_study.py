@@ -5,6 +5,8 @@ had in common.
     .venv\\Scripts\\python.exe -m highs.breakout_study collect      (resumable; rerun until "all done")
     .venv\\Scripts\\python.exe -m highs.breakout_study futures      (funding + open interest, resumable)
     .venv\\Scripts\\python.exe -m highs.breakout_study report
+    .venv\\Scripts\\python.exe -m highs.breakout_study level        (1-minute test of entering AT the old
+    .venv\\Scripts\\python.exe -m highs.breakout_study level-report   high: see highs/breakout_level.py)
 
 Data: Binance public market data (free, no key). Spot USDT pairs INCLUDING delisted ones (their
 history stays available), so coins that later died are in the sample.
@@ -409,7 +411,8 @@ async def collect(cfg, budget_s: float, limit: int | None) -> bool:
         if pending:
             await asyncio.wait(pending)
         fh.close()
-        left = len([e for e in events if e["key"] not in read_jsonl(out_p)])
+        stored = read_jsonl(out_p)
+        left = len([e for e in events if e["key"] not in stored])
         print(f"{n_new} new records ({net.requests} requests, {time.time() - t_start:.0f}s). "
               + ("ALL DONE" if not left else f"{left} breaks still to do - run again"), flush=True)
         return not left
@@ -506,7 +509,7 @@ def main() -> int:
         if hasattr(s, "reconfigure"):
             s.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(description="Intraday study of 52-week / all-history high breakouts")
-    ap.add_argument("stage", choices=["collect", "futures", "report"])
+    ap.add_argument("stage", choices=["collect", "futures", "report", "level", "level-report"])
     ap.add_argument("--budget", type=float, default=1e9, help="stop after this many seconds (rerun to continue)")
     ap.add_argument("--limit", type=int, default=None, help="collect: only an evenly spaced sample of N breaks (testing)")
     a = ap.parse_args()
@@ -515,6 +518,12 @@ def main() -> int:
         asyncio.run(collect(cfg, a.budget, a.limit))
     elif a.stage == "futures":
         asyncio.run(futures(cfg, a.budget))
+    elif a.stage == "level":
+        from highs.breakout_level import collect_level
+        asyncio.run(collect_level(cfg, a.budget))
+    elif a.stage == "level-report":
+        from highs.breakout_level import level_report
+        level_report(cfg)
     else:
         from highs.breakout_report import report
         report(cfg)

@@ -247,3 +247,39 @@ def test_breakout_study_measures_and_races():
     m5[k + 3, 3] = 96.0                              # target and stop in the same candle: the stop is assumed
     res, code = Set([{"t": 0, "d0": measure(m5, h1, k, old=99.0)}], "d0", costs).race(2, 3)
     assert code[0] == -1
+
+
+def test_breakout_level_entry_at_the_old_high():
+    from highs.breakout_level import measure_level, race
+    from highs.breakout_study import DN, UP
+    n1, n5 = 1000, 700
+    m1 = np.zeros((n1, 7))
+    m1[:, 0] = np.arange(n1) * 60_000
+    m1[:, 1:5] = 99.0
+    m1[2, 1:5] = [99.0, 100.5, 98.5, 100.2]         # minute 2 crosses the old high (100); its low is 1.5% under it
+    m1[3:, 1:5] = 100.2
+    m1[6, 2] = 103.5                                 # +3.5% four minutes after the cross
+    m1[30, 3] = 95.9                                 # -4.1% later
+    m5 = np.zeros((n5, 7))
+    m5[:, 0] = np.arange(n5) * 300_000
+    m5[:, 1:5] = 100.2
+    m5[400, 2] = 111.0                               # +11% in the 5-minute part (after the 1,000 minutes)
+    m5[-1, 4] = 102.0
+    r = measure_level(m1, m5, old=100.0)
+    assert r["cross_min"] == 2 and not r["gapped"] and r["fill_vs_old_pct"] == 0.0
+    assert r["pess"]["dn"][DN.index(1)] == 1.0 and r["opt"]["dn"][DN.index(1)] == 29.0     # the fill candle's low
+    assert r["pess"]["up"][UP.index(3)] == r["opt"]["up"][UP.index(3)] == 5.0
+    assert r["opt"]["up"][UP.index(10)] == (400 * 5 + 5) - 2 and r["pess"]["ret48"] == r["opt"]["ret48"]
+    assert r["m0"]["vs_old_pct"] == pytest.approx(0.2) and r["m0"]["up"][UP.index(3)] == 4.0
+    recs = [{"t": 0, **r}]
+    exits = (0.02, 0.11)
+    res, code, _ = race(recs, "opt", 3, 1, 0.18, exits)             # +3% (minute 5) before -1% (minute 29)
+    assert code[0] == 1 and res[0] == pytest.approx(3 - 0.02 - 0.18 - 0.01 * (5 / 60) / 8)
+    res, code, _ = race(recs, "pess", 3, 1, 0.18, exits)            # worst case: the fill candle's low stops it
+    assert code[0] == -1 and res[0] == pytest.approx(-1 - 0.11 - 0.18 - 0.01 * (1 / 60) / 8)
+    res, code, _ = race(recs, "opt", 10, 4, 0.18, exits)            # -4% (minute 29) before +10%
+    assert code[0] == -1
+    m1[2, 1] = 100.4                                 # the crossing minute OPENS above the old high: filled at the open
+    g = measure_level(m1, m5, old=100.0)
+    assert g["gapped"] and g["fill_vs_old_pct"] == pytest.approx(0.4) and g["opt"] == g["pess"]
+    assert measure_level(m1[:, :], m5[:300], old=100.0) is None      # no 48 hours of data

@@ -1,0 +1,64 @@
+======================================================================================================================================================
+ENTERING AT THE OLD HIGH - 1-MINUTE DATA   1,300 breaks measured, 0 without a clean 1-minute path
+  the candle that crossed opened above the old high (a gap) in 0% of breaks; fill vs the old high: median +0.00%, 90% of breaks under +0.00%
+  costs, % of the position: market order 0.11 (resting order: 0.08 + the stated slippage), target 0.02; funding 0.01% per 8h. Held at most 48 hours. x20 = % of the margin at 20x.
+  each cell: average result [90% range] target hit %
+
+  entry                                                   +3 / -3                    +5 / -3                    +5 / -2                   +10 / -4                   +10 / -2                   +20 / -4          
+  RESTING BUY-STOP ORDER AT THE OLD HIGH, 0.10% slippage on the fill
+  best case (fill candle's low was befor n=1,300 +0.31 [+0.19..+0.45]  59% | +0.55 [+0.36..+0.76]  46% | +0.57 [+0.42..+0.75]  40% | +1.21 [+0.92..+1.56]  36% | +0.93 [+0.73..+1.16]  25% | +1.27 [+0.89..+1.74]  18%
+     until 2023-12                       n=  650 +0.41 [+0.18..+0.58]  61% | +0.62 [+0.33..+0.90]  48% | +0.62 [+0.35..+0.86]  41% | +1.45 [+1.02..+1.88]  38% | +0.99 [+0.65..+1.34]  26% | +1.49 [+0.92..+2.13]  19%
+     since 2023-12                       n=  650 +0.22 [+0.01..+0.40]  57% | +0.47 [+0.25..+0.77]  45% | +0.52 [+0.37..+0.72]  39% | +0.96 [+0.59..+1.40]  34% | +0.87 [+0.63..+1.25]  25% | +1.04 [+0.57..+1.72]  17%
+  worst case (that low came after the fi n=1,300 -0.08 [-0.21..+0.06]  52% | +0.12 [-0.07..+0.32]  41% | -0.01 [-0.13..+0.14]  32% | +0.76 [+0.47..+1.09]  33% | +0.30 [+0.08..+0.56]  20% | +0.84 [+0.46..+1.32]  16%
+     until 2023-12                       n=  650 -0.02 [-0.23..+0.14]  54% | +0.16 [-0.12..+0.46]  42% | +0.06 [-0.17..+0.27]  33% | +0.93 [+0.44..+1.40]  35% | +0.37 [-0.01..+0.74]  21% | +0.97 [+0.29..+1.63]  17%
+     since 2023-12                       n=  650 -0.14 [-0.45..+0.07]  51% | +0.09 [-0.17..+0.37]  40% | -0.07 [-0.23..+0.10]  30% | +0.60 [+0.16..+0.99]  32% | +0.22 [-0.09..+0.64]  19% | +0.70 [+0.06..+1.32]  16%
+  the same order with more slippage on the fill (worst case .. best case shown as two lines each)
+     slippage 0.05%  best case           n=1,300 +0.36 [+0.24..+0.50]  59% | +0.60 [+0.41..+0.81]  46% | +0.62 [+0.47..+0.80]  40% | +1.26 [+0.97..+1.61]  36% | +0.98 [+0.78..+1.21]  25% | +1.32 [+0.94..+1.79]  18%
+     slippage 0.05%  worst case          n=1,300 -0.03 [-0.16..+0.11]  52% | +0.17 [-0.02..+0.37]  41% | +0.04 [-0.08..+0.19]  32% | +0.81 [+0.52..+1.14]  33% | +0.35 [+0.13..+0.61]  20% | +0.89 [+0.51..+1.37]  16%
+     slippage 0.20%  best case           n=1,300 +0.21 [+0.09..+0.35]  59% | +0.45 [+0.26..+0.66]  46% | +0.47 [+0.32..+0.65]  40% | +1.11 [+0.82..+1.46]  36% | +0.83 [+0.63..+1.06]  25% | +1.17 [+0.79..+1.64]  18%
+     slippage 0.20%  worst case          n=1,300 -0.18 [-0.31..-0.04]  52% | +0.02 [-0.17..+0.22]  41% | -0.11 [-0.23..+0.04]  32% | +0.66 [+0.37..+0.99]  33% | +0.20 [-0.02..+0.46]  20% | +0.74 [+0.36..+1.22]  16%
+     slippage 0.30%  best case           n=1,300 +0.11 [-0.01..+0.25]  59% | +0.35 [+0.16..+0.56]  46% | +0.37 [+0.22..+0.55]  40% | +1.01 [+0.72..+1.36]  36% | +0.73 [+0.53..+0.96]  25% | +1.07 [+0.69..+1.54]  18%
+     slippage 0.30%  worst case          n=1,300 -0.28 [-0.41..-0.14]  52% | -0.08 [-0.27..+0.12]  41% | -0.21 [-0.33..-0.06]  32% | +0.56 [+0.27..+0.89]  33% | +0.10 [-0.12..+0.36]  20% | +0.64 [+0.26..+1.12]  16%
+     slippage 0.50%  best case           n=1,300 -0.09 [-0.21..+0.05]  59% | +0.15 [-0.04..+0.36]  46% | +0.17 [+0.02..+0.35]  40% | +0.81 [+0.52..+1.16]  36% | +0.53 [+0.33..+0.76]  25% | +0.87 [+0.49..+1.34]  18%
+     slippage 0.50%  worst case          n=1,300 -0.48 [-0.61..-0.34]  52% | -0.28 [-0.47..-0.08]  41% | -0.41 [-0.53..-0.26]  32% | +0.36 [+0.07..+0.69]  33% | -0.10 [-0.32..+0.16]  20% | +0.44 [+0.06..+0.92]  16%
+
+  MARKET ORDER AFTER THE CROSS (the close of the 1-minute candle N minutes later)
+   0 min later (median +0.10% above old high) n=1,300 +0.15 [+0.01..+0.31]  55% | +0.39 [+0.20..+0.61]  44% | +0.31 [+0.15..+0.51]  35% | +0.96 [+0.73..+1.22]  34% | +0.57 [+0.38..+0.81]  22% | +0.98 [+0.67..+1.37]  17%
+   1 min later (median +0.17% above old high) n=1,300 +0.10 [-0.04..+0.23]  54% | +0.33 [+0.15..+0.52]  43% | +0.26 [+0.09..+0.39]  34% | +0.68 [+0.42..+0.96]  32% | +0.44 [+0.25..+0.65]  21% | +0.77 [+0.41..+1.25]  16%
+   2 min later (median +0.18% above old high) n=1,300 +0.02 [-0.15..+0.18]  53% | +0.13 [-0.05..+0.31]  40% | +0.10 [-0.06..+0.26]  32% | +0.67 [+0.39..+0.93]  32% | +0.34 [+0.12..+0.62]  20% | +0.74 [+0.37..+1.26]  16%
+   5 min later (median +0.19% above old high) n=1,300 -0.07 [-0.23..+0.06]  51% | +0.01 [-0.16..+0.16]  39% | -0.02 [-0.16..+0.10]  30% | +0.39 [+0.10..+0.65]  30% | +0.19 [+0.03..+0.36]  19% | +0.64 [+0.24..+1.04]  16%
+  10 min later (median +0.18% above old high) n=1,300 +0.01 [-0.18..+0.17]  52% | +0.03 [-0.20..+0.23]  39% | -0.06 [-0.24..+0.13]  30% | +0.42 [+0.13..+0.73]  30% | +0.15 [-0.09..+0.46]  18% | +0.42 [-0.01..+0.98]  15%
+  15 min later (median +0.15% above old high) n=1,300 -0.11 [-0.28..+0.02]  51% | -0.07 [-0.29..+0.10]  38% | -0.14 [-0.31..-0.01]  29% | +0.12 [-0.19..+0.45]  28% | -0.07 [-0.29..+0.17]  17% | +0.30 [-0.12..+0.83]  14%
+
+  WHERE THE RESULT COMES FROM (+10 / -4, resting order, 0.10% slippage)
+   opt: 36% hit the target, 57% stopped, 6% timed out; target reached within 5 min in 13% of the winners, within 15 min 24%, within 1h 43%
+        average +1.21; counting winners that got there within 5 min as zero: +0.74; within 15 min: +0.35
+        stopped within 1 min of the fill: 0% of the stops, within 5 min 14%, within 1h 45%
+        by year: 2019: +1.36 (n=10)  2020: +1.52 (n=93)  2021: +1.47 (n=383)  2022: -0.58 (n=13)  2023: +1.33 (n=207)  2024: +0.93 (n=496)  2025: +1.39 (n=55)  2026: +1.03 (n=43)
+   pess: 33% hit the target, 60% stopped, 6% timed out; target reached within 5 min in 8% of the winners, within 15 min 18%, within 1h 38%
+        average +0.76; counting winners that got there within 5 min as zero: +0.50; within 15 min: +0.18
+        stopped within 1 min of the fill: 14% of the stops, within 5 min 20%, within 1h 48%
+        by year: 2019: +1.36 (n=10)  2020: +1.52 (n=93)  2021: +0.81 (n=383)  2022: -2.74 (n=13)  2023: +0.72 (n=207)  2024: +0.73 (n=496)  2025: +0.63 (n=55)  2026: +0.38 (n=43)
+
+  BY GROUP (+10 / -4, resting order, 0.10% slippage): worst case .. best case, [90% range of the worst case], target hit % worst..best
+   all-history high                         n=  433  +0.61 .. +1.20  [+0.03..+1.08]   32%.. 36%
+   52-week high                             n=  867  +0.84 .. +1.21  [+0.48..+1.25]   34%.. 36%
+   Bitcoin above its 200-day average        n=1,213  +0.84 .. +1.24  [+0.51..+1.12]   34%.. 37%
+   Bitcoin below its 200-day average        n=   87  -0.29 .. +0.68  [-1.31..+0.72]   23%.. 30%
+   daily volume under $5M                   n=  359  +0.34 .. +1.28  [-0.10..+0.87]   30%.. 37%
+   daily volume $5M-$50M                    n=  641  +1.02 .. +1.31  [+0.52..+1.42]   37%.. 39%
+   daily volume over $50M                   n=  300  +0.71 .. +0.90  [+0.11..+1.35]   30%.. 31%
+   old high 7-30 days old                   n=  503  +0.70 .. +0.87  [+0.31..+1.03]   32%.. 33%
+   old high 31-180 days old                 n=  346  +1.15 .. +1.60  [+0.58..+1.84]   35%.. 38%
+   old high older than 180 days             n=  451  +0.53 .. +1.28  [-0.11..+1.17]   33%.. 38%
+   0-1 days near the high in the last 30    n=  688  +0.66 .. +1.41  [+0.15..+1.13]   34%.. 40%
+   2-4 days near the high                   n=  412  +0.51 .. +0.61  [-0.11..+0.96]   32%.. 33%
+   5+ days near the high                    n=  200  +1.65 .. +1.72  [+0.95..+2.56]   32%.. 32%
+   calm coin (daily range under 8%)         n=  305  +1.04 .. +1.41  [+0.52..+1.67]   29%.. 32%
+   daily range 8-12%                        n=  466  +0.92 .. +1.25  [+0.48..+1.50]   36%.. 38%
+   wild coin (daily range over 12%)         n=  529  +0.46 .. +1.05  [-0.26..+1.00]   33%.. 38%
+
+  AS A PLAN: every break taken with a $1,000 position ($50 margin at 20x), +10 / -4, in date order
+   worst case: total $+9,895 over 7.5 years (1,300 trades; a win $+98, a stop $-43); deepest drawdown $1,277; longest run without a win 25 trades; 30 losing months of 78 with trades (worst $-751, best $+1,766)
+   best case: total $+15,671 over 7.5 years (1,300 trades; a win $+98, a stop $-43); deepest drawdown $974; longest run without a win 14 trades; 25 losing months of 78 with trades (worst $-258, best $+2,188)
+   trades are bunched: 211 of them in 2024-03 alone; 15% start within an hour of the previous one

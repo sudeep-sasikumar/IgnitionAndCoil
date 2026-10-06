@@ -183,6 +183,7 @@ The **Highs** tab lists coins in the CoinGecko top 2,000 that broke their **all-
   - A free CoinGecko Demo key (`COINGECKO_DEMO_API_KEY` in `.env` or in Docker Manager) makes loading about 5× faster.
 - **Intraday breakout study:** `highs/breakout_study.py` measures what happened minute by minute after 1,300 such breaks on Binance since 2019 (delisted coins included): how far they ran, how deep they dipped first, which target/stop exits paid, and what the big runners had in common. The result is in `highs/breakout_report_snapshot.txt` and summarised in `docs/DECISIONS.md`.
   - Re-run: `.venv\Scripts\python.exe -m highs.breakout_study collect`, then `futures`, then `report` (about 15 minutes, free Binance data).
+  - `level` and `level-report` add the 1-minute test of entering exactly at the old high with a resting buy-stop order (`highs/breakout_level_snapshot.txt`).
 - **Study:** "What happened after past breaks" is a study of every such break since 2017, from Binance daily prices (CoinGecko's free history only goes back a year).
   - Re-run it with `.venv\Scripts\python.exe -m highs.study`, which takes a few minutes.
   - The tab shows a snapshot until you do.
