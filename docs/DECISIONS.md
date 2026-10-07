@@ -167,6 +167,16 @@ Question: the Highs tab shows most coins running a few percent above the old hig
 - **Not a filter:** grouping by type of high, coin volume, age of the old high, days spent near it or volatility showed no difference beyond noise.
 - **Open points:** this is Binance spot, not WEEX perps; real slippage on a stop order in a fast breakout is the main unknown (the fastest pumps are both the biggest winners and the worst fills); the scanner has no "approaching a high" list yet, which a resting order needs; and it is a backtest of one plan picked from six.
 
+**Approaching list (2026-10-07), built on that result:**
+
+| Topic | Decision | Why |
+|---|---|---|
+| What is listed | Coins within `approach_pct` (3%) below the level whose break the scanner would report next: the lower of the 52-week high and the all-time high among those at least 7 days old (`detector.next_level`, tested to agree with `check`). | A resting order has to be placed before the break; the tab only showed breaks after they happened. |
+| Plan shown | Level, distance, and the +10% / -4% target and stop from the level (`approach_plan`). | The only exit that was positive in both readings of the 1-minute test. Shown as the study's plan, not as advice; the tab states the hit rate and the Bitcoin-trend caveat. |
+| Telegram | Once per coin and level, again after `approach_realert_h` (24 h) if still near; only coins with a WEEX perp (`approach_weex_only: true`); state kept across restarts. | Only those can be traded with leverage on WEEX; a coin hovering around the 3% line must not alert every scan. |
+| WEEX match | Ticker AND price: the perp's mark price must be within `weex_match_max_diff_pct` (5%) of CoinGecko's price. Used for the Approaching list and for the links on new breaks. | Checked live on 2026-10-07: 544 matches accepted (median price difference 0.15%, 90% under 0.41%), 43 rejected as different assets with the same ticker (META, ONE, VELO, ...). A wrong match would send an order to the wrong coin. |
+| Not done | No Bitcoin 200-day-average filter (the study's negative case, 87 breaks): the app has no daily Bitcoin history of that length; the tab states the caveat instead. No orders, ever. | Would be an approximation presented as a rule. |
+
 **Limits:** Binance spot coins are more liquid than most of the CoinGecko top 2,000 the tab scans, and only coins with a perp can be traded with leverage (9 of the 33 live breaks had a WEEX ticker match, by ticker only - OPENAI on WEEX is priced differently from CoinGecko's OPENAI, so some matches are different assets). "All-history high" is the highest price in Binance's history, not necessarily the coin's true ATH. 39 breaks (3%) could not be measured because trading stopped within 48 hours.
 
 ## RISK_OFF longs test (2026-09-30)

@@ -172,6 +172,11 @@ The **Highs** tab lists coins in the CoinGecko top 2,000 that broke their **all-
 
 - **What counts as a break:** price trades above a high that is at least **7 days old**. A coin already trending at new highs every day counts once, not every scan. An ATH break is shown as ATH only.
 - **Left out:** stablecoins, plus wrapped, bridged and staked copies of other coins.
+- **Approaching a high:** the top of the tab lists coins within 3% below the level whose break would be listed next (`highs.approach_pct`), with that level, how far away it is, and the target and stop of the plan the breakout study tested (+10% / -4%, `highs.approach_plan`).
+  - It exists so you can place a buy-stop order at the level before the break; the app never places orders.
+  - Telegram sends 🎯 once per coin and level (again after 24 hours if it is still near), only for coins with a WEEX perp (`approach_weex_only`).
+  - A WEEX perp counts as the same coin only if its ticker matches AND its price is within 5% of CoinGecko's (`weex_match_max_diff_pct`): about 7% of ticker matches are a different asset.
+  - Levels are CoinGecko prices; check the level on the exchange chart before placing an order.
 - **How far it ran:** each break shows its **Peak since** (the highest price since the break), **Max run-up** (that peak vs the old high) and **Off peak** (how far price is below the peak now).
   - The peak is updated at every scan for 30 days (`highs.peak_track_days`).
   - Breaks recorded before this existed, or missed while the scanner was off for most of a day, are filled automatically from CoinGecko candles (one request per coin; "–" until loaded).

@@ -101,6 +101,7 @@ class _Eng:
         self.cfg, self.db = cfg, db
         self.clock = type("C", (), {"now_ms": staticmethod(lambda: NOW)})()
         self.universe = type("U", (), {"exchange_symbols": set()})()
+        self.premium = type("P", (), {"mark": staticmethod(lambda s: None)})()
 
 
 def _event(db, ts, level=11.0, price=10.9, **over):
@@ -283,3 +284,56 @@ def test_breakout_level_entry_at_the_old_high():
     g = measure_level(m1, m5, old=100.0)
     assert g["gapped"] and g["fill_vs_old_pct"] == pytest.approx(0.4) and g["opt"] == g["pess"]
     assert measure_level(m1[:, :], m5[:300], old=100.0) is None      # no 48 hours of data
+
+
+# ---- approaching a high --------------------------------------------------------------------------
+
+def test_next_level_is_the_level_check_would_report():
+    from highs.detector import next_level
+    st = coin_with_history(peak=20.0, peak_age=40)                   # 52-week high 20 (40 days old), ATH 50
+    nl = next_level(st, NOW, 7, 300)
+    assert (nl.kind, nl.level) == (H52, 20.0)
+    (b,) = check(st, Obs(20.1, None, 50.0, st.ath_ms), NOW, 7, 300)  # trading just above it IS that break
+    assert (b.kind, b.prev_high) == (nl.kind, nl.level)
+    fresh = coin_with_history(peak=20.0, peak_age=3)                 # 52-week high only 3 days old: a trend...
+    nl = next_level(fresh, NOW, 7, 300)
+    assert (nl.kind, nl.level) == (ATH, 50.0)                        # ...but the old all-time high above it counts
+    fresh.ath_ms = NOW - 2 * DAY
+    assert next_level(fresh, NOW, 7, 300) is None                    # both fresh: nothing to wait for
+    young = coin_with_history(days=100, peak=20.0, peak_age=40)      # too little history for a 52-week high
+    assert next_level(young, NOW, 7, 300).kind == ATH
+    same = coin_with_history(peak=50.0, peak_age=40)                 # the 52-week high IS the all-time high
+    same.ath_ms = NOW - 40 * DAY
+    assert next_level(same, NOW, 7, 300).kind == ATH
+
+
+def test_approaching_list_alerts_once_per_level(cfg, tmp_path):
+    from data.db import Database
+    from highs.service import approach_text
+    eng = _Eng(cfg, Database(f"sqlite:///{tmp_path / 'a.db'}"))
+    eng.universe.exchange_symbols = {"XYZUSDT"}
+    marks = {"XYZUSDT": 19.6}
+    eng.premium = type("P", (), {"mark": staticmethod(lambda s: marks.get(s))})()
+    svc = HighsService(eng)
+    svc.load()
+    st = coin_with_history(peak=20.0, peak_age=40)
+    m = {"rank": 7, "market_cap": 1e9, "volume": 5e6}
+    assert svc.approach_row(st, 19.0, m, NOW) is None                # 5.3% under the level: not near yet
+    assert svc.approach_row(st, 20.5, m, NOW) is None                # already above it
+    a = svc.approach_row(st, 19.6, m, NOW)
+    assert a["kind"] == H52 and a["level"] == 20.0 and a["dist_pct"] == pytest.approx(2.0408, abs=1e-3)
+    assert a["target"] == pytest.approx(22.0) and a["stop"] == pytest.approx(19.2) and a["weex_symbol"] == "XYZUSDT"
+    marks["XYZUSDT"] = 30.0                                          # same ticker, another price: another coin
+    assert svc.approach_row(st, 19.6, m, NOW)["weex_symbol"] is None
+    marks.clear()                                                    # no WEEX price yet: the ticker alone decides
+    assert svc.weex_symbol("xyz", 19.6) == "XYZUSDT" and svc.weex_symbol("abc", 1.0) is None
+    svc.approaching = [a, {**a, "cg_id": "y", "weex_symbol": None}]
+    assert [x["cg_id"] for x in svc.approach_new(NOW)] == ["x"]      # Telegram: WEEX perps only
+    svc.approach_sent = {"x": [20.0, NOW]}
+    assert svc.approach_new(NOW + 3_600_000) == []                   # the same level: not again within a day
+    assert len(svc.approach_new(NOW + 25 * 3_600_000)) == 1          # ...but again after it
+    svc.approaching = [{**a, "level": 21.0}]
+    assert len(svc.approach_new(NOW + 3_600_000)) == 1               # a new level: alert
+    t = approach_text([a], NOW, (10.0, 4.0), "https://x.test", False)
+    assert "XYZ #7 $19.600 → 52W high $20.000 (2.0% away, set 40d ago)" in t and "WEEX XYZUSDT" in t
+    assert "target +10% $22.000 · stop -4% $19.200" in t and t.endswith("https://x.test/highs")

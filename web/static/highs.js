@@ -1,7 +1,7 @@
 /* Highs tab: CoinGecko top coins breaking their 52-week / all-time high, plus the event study. */
 "use strict";
 
-const HS = { kind: loadPref("highs.kind", "ALL"), q: "" };
+const HS = { kind: loadPref("highs.kind", "ALL"), q: "", weex: loadPref("highs.weex", true) };
 
 function usd(x) {
   if (!isNum(x)) return "–";
@@ -19,6 +19,11 @@ function highsView(app) {
   const status = h("div", { class: "muted small" });
   const wrap = h("div", { class: "table-wrap" });
   const studyBox = h("div");
+  const nearWrap = h("div", { class: "table-wrap" });
+  const nearNote = h("p", { class: "faint small" });
+  const weexBtn = h("button", { class: "btn small-btn" + (HS.weex ? " primary" : ""), type: "button", text: "WEEX perps only",
+    title: "Only coins with a WEEX perpetual of the same ticker AND about the same price",
+    onclick: () => { HS.weex = !HS.weex; savePref("highs.weex", HS.weex); weexBtn.classList.toggle("primary", HS.weex); draw(); } });
   const search = h("input", { type: "search", placeholder: "Filter coin…", "aria-label": "Filter coins",
     oninput: (e) => { HS.q = e.target.value.trim().toLowerCase(); draw(); } });
   const kinds = [["ALL", "All"], ["ATH", "All-time high"], ["52W", "52-week high"]];
@@ -27,15 +32,50 @@ function highsView(app) {
     onclick: () => { HS.kind = k; savePref("highs.kind", k); for (const b of kindBtns.children) b.classList.toggle("primary", b.textContent === label); draw(); },
   })));
   app.append(h("div", { class: "stack" },
+    h("div", {}, h("div", { class: "toolbar" }, h("h2", { text: "Approaching a high", style: "margin:0" }), weexBtn), nearWrap, nearNote),
     h("div", {}, h("div", { class: "toolbar" }, h("h2", { text: "New highs", style: "margin:0" }), kindBtns, search), status, wrap,
       h("p", { class: "faint small", text: "CoinGecko top coins (stablecoins and wrapped / staked copies left out). A break counts when price trades above a high that is at least a week old: ATH = CoinGecko's all-time high, 52W = the highest high of the last 365 days (not an ATH). \"vs old high\" below 0% = the breakout failed so far. \"Peak since\" = the highest price since the break (hover for when), \"Max run-up\" = that peak vs the old high, \"Off peak\" = how far price is below the peak now." })),
     h("div", { class: "card" }, h("h2", { text: "What happened after past breaks" }), studyBox)));
 
   let data = null;
+  function drawNear() {
+    const st = data.status;
+    const all = data.approaching || [];
+    const rows = all.filter((a) => (HS.kind === "ALL" || a.kind === HS.kind) && (!HS.weex || a.weex_symbol) &&
+      (!HS.q || a.symbol.toLowerCase().includes(HS.q) || a.name.toLowerCase().includes(HS.q)));
+    nearNote.textContent = `Coins within ${st.approach_pct}% below the level whose break would be listed next (an old high at least ${st.min_high_age_days} days old). ` +
+      `For a buy-stop order placed AT the level before the break: in the breakout study (1,300 breaks on Binance since 2019) that entry with a +${st.plan_target_pct}% target and a -${st.plan_stop_pct}% stop was profitable on average, ` +
+      "while entering minutes after the break was not, and small targets lost. About a third of such trades reached the target and most were stopped; it lost when Bitcoin was below its 200-day average. " +
+      "A backtest, not a promise. Levels are CoinGecko prices: check the level on the exchange chart. This app never places orders.";
+    if (!rows.length) {
+      nearWrap.replaceChildren(h("div", { class: "empty", text: all.length ? `None of the ${all.length} coins near a level match the filter.` : "No coin is near a qualifying high right now." }));
+      return;
+    }
+    const head = ["Coin", "Rank", "Type", "Level (old high)", "Set", "Now", "Away", `Target +${st.plan_target_pct}%`, `Stop -${st.plan_stop_pct}%`, "Mkt cap", "Vol 24h", "Links"];
+    nearWrap.replaceChildren(h("table", {},
+      h("thead", {}, h("tr", {}, head.map((t, i) => h("th", { class: i === 0 || i === head.length - 1 ? "left" : "", text: t })))),
+      h("tbody", {}, rows.map((a) => h("tr", {},
+        h("td", { class: "left" }, h("b", { text: a.symbol }), " ", h("span", { class: "muted small", text: a.name })),
+        h("td", { class: "num", text: a.rank ? "#" + a.rank : "–" }),
+        h("td", {}, h("span", { class: `badge ${a.kind === "ATH" ? "ATH" : "H52"}`, text: a.kind === "ATH" ? "ATH" : "52W" })),
+        h("td", { class: "num", text: price(a.level) }),
+        h("td", { class: "num muted", title: when(a.level_ms), text: ago(a.level_ms) + " ago" }),
+        h("td", { class: "num", text: price(a.price) }),
+        h("td", { class: "num", text: a.dist_pct.toFixed(1) + "%" }),
+        h("td", { class: "num", text: price(a.target) }),
+        h("td", { class: "num", text: price(a.stop) }),
+        h("td", { class: "num", text: usd(a.market_cap) }),
+        h("td", { class: "num", text: usd(a.volume) }),
+        h("td", { class: "left" },
+          h("a", { href: `https://www.coingecko.com/en/coins/${encodeURIComponent(a.cg_id)}`, target: "_blank", rel: "noopener", text: "CoinGecko" }),
+          a.weex_symbol ? [" · ", h("a", { href: `https://www.tradingview.com/chart/?symbol=${encodeURIComponent("WEEX:" + a.weex_symbol + ".P")}`, target: "_blank", rel: "noopener", text: "WEEX perp" })] : null),
+      )))));
+  }
   function draw() {
     if (!data) { wrap.replaceChildren(h("div", { class: "empty", text: "Loading…" })); return; }
     if (data.disabled) { wrap.replaceChildren(h("div", { class: "empty", text: "The Highs scanner is off (highs.enabled in config.yaml)." })); return; }
     const st = data.status;
+    drawNear();
     status.replaceChildren(
       `Tracking ${st.tracked.toLocaleString("en-GB")} of the top ${st.top_n.toLocaleString("en-GB")} coins · last scan ${st.last_scan_ms ? when(st.last_scan_ms) : "pending"} (every ${st.scan_min} min) · `,
       h("span", { title: "A year of price history per coin is needed for the 52-week high; it loads a few coins per minute (all-time highs work immediately)" },

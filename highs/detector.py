@@ -81,6 +81,22 @@ def check(st: CoinState, ob: Obs, now_ms: int, min_age_days: float, min_hist_day
     return []
 
 
+def next_level(st: CoinState, now_ms: int, min_age_days: float, min_hist_days: float) -> Break | None:
+    """The level whose break `check` would report next: the lower of the 52-week high and the
+    all-time high among those old enough to count. None if neither counts (a coin already
+    printing fresh highs, or without enough history). level = prev_high = that level."""
+    min_age = min_age_days * DAY
+    best = None
+    if st.hist_ok and history_days(st.hist, now_ms) >= min_hist_days:
+        h = high_52w(st.hist, now_ms)
+        if h and now_ms - h[1] >= min_age:
+            best = Break(H52, h[0], h[0], h[1])
+    if st.ath is not None and (st.ath_ms is None or now_ms - st.ath_ms >= min_age) and (
+            best is None or st.ath <= best.level):
+        best = Break(ATH, float(st.ath), float(st.ath), st.ath_ms)
+    return best
+
+
 def update(st: CoinState, ob: Obs, now_ms: int) -> bool:
     """Fold the observation into the state. Returns True if the price history changed."""
     if ob.ath is not None:

@@ -266,6 +266,17 @@ highs:
   min_history_days: 300         # 52-week high needs this much price history (younger coins: ATH only)
   show_days: 14                 # breaks listed on the Highs tab
   peak_track_days: 30           # follow each break's peak (highest price since the break) this long
+  # "Approaching a high": coins within approach_pct below the level whose break would be reported
+  # next, so a buy-stop order can be placed AT the level before the break (breakout study,
+  # docs/DECISIONS.md). The app only lists and alerts; it never places orders.
+  approach_pct: 3.0
+  approach_telegram: true
+  approach_weex_only: true      # Telegram only for coins with a WEEX perp (the tab lists every coin)
+  approach_realert_h: 24        # the same coin and level again at most this often
+  approach_plan:                # the exit the study tested; shown next to each level
+    target_pct: 10
+    stop_pct: 4
+  weex_match_max_diff_pct: 5    # a WEEX perp is the same coin only if its price is within this % of CoinGecko's
   telegram: true
   alert_min_volume_usd: 0       # leave coins trading less than this (24h, USD) out of Telegram (0 = all)
   max_lines_per_alert: 20

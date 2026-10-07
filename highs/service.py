@@ -6,6 +6,11 @@ updated at every scan for highs.peak_track_days from the price, CoinGecko's 24h 
 Breaks we did not watch from the start (recorded before this existed, or the scanner was down
 for most of a day) are filled once from CoinGecko candles by peak_loop.
 
+APPROACHING: every scan also lists the coins within highs.approach_pct below the level whose
+break would be reported next (highs.detector.next_level), and alerts once per coin and level,
+so a buy-stop order can be placed AT the level before the break (the breakout study in
+docs/DECISIONS.md found the first minutes after the cross matter most). Signals only.
+
 Three loops share one paced CoinGecko client:
 - peak_loop: one request per coin, only when a break's peak has to be filled from candles
 - scan_loop: /coins/markets for the top N (8 requests for 2,000 coins) every highs.scan_min
@@ -23,11 +28,13 @@ from pathlib import Path
 from core.config import load_env
 from highs import store
 from highs.coingecko import CoinGecko, parse_iso_ms
-from highs.detector import ATH, DAY, CoinState, Obs, check, excluded, merge_candles, ohlc_days, peak_after, update
+from highs.detector import (ATH, DAY, CoinState, Obs, check, excluded, merge_candles, next_level, ohlc_days,
+                            peak_after, update)
 
 log = logging.getLogger("highs")
 STALE_HIST = 5 * DAY          # reload candles after a gap in our own daily observations (candles are 4-day)
 WATCH_GAP = 23 * 3_600_000    # a longer gap between two scans of a coin is not covered by its 24h high
+APPROACH_STATE = "highs_approach_sent"      # app_state key: {cg_id: [level, alerted_ms]}
 
 
 def fmt_usd(x: float | None) -> str:
@@ -73,8 +80,13 @@ class HighsService:
         self.track_ms = int(float(h.get("peak_track_days", 30)) * DAY)
         self.tracked: dict[str, list[dict]] = {}   # cg_id -> its breaks whose peak is still followed
         self.refill: dict[str, None] = {}          # coins whose peaks need candles (ordered set)
+        self.approaching: list[dict] = []          # coins just under a level (rebuilt every scan)
+        self.approach_sent: dict[str, list] = {}   # cg_id -> [level, when alerted]
+        plan = h.get("approach_plan") or {}
+        self.plan = (float(plan.get("target_pct", 10)), float(plan.get("stop_pct", 4)))
 
     def load(self) -> None:
+        self.approach_sent = dict(self.db.get_state(APPROACH_STATE, {}) or {})
         for cg_id, (st, row) in store.load_states(self.db).items():
             self.states[cg_id] = st
             self.meta[cg_id] = {"rank": row.rank, "price": row.price, "market_cap": row.market_cap,
@@ -145,9 +157,63 @@ class HighsService:
             peaks = self.fill_peaks(cg_id, candles if isinstance(candles, list) else [])
             await asyncio.to_thread(store.set_peaks, self.db, peaks)
 
-    def weex_symbol(self, symbol: str) -> str | None:
+    def weex_symbol(self, symbol: str, price: float | None = None) -> str | None:
+        """<COIN>USDT if WEEX lists it AND it is the same asset: tickers are not unique, so a perp
+        whose price is further than highs.weex_match_max_diff_pct from the coin's is another coin."""
         s = f"{symbol.upper()}USDT"
-        return s if s in self.eng.universe.exchange_symbols else None
+        if s not in self.eng.universe.exchange_symbols:
+            return None
+        mark = self.eng.premium.mark(s)
+        if price and mark and abs(mark / price - 1) * 100 > float(self.h.get("weex_match_max_diff_pct", 5)):
+            return None
+        return s
+
+    # ---- approaching a level ------------------------------------------------------------------
+    def approach_row(self, st: CoinState, price: float, m: dict, now: int) -> dict | None:
+        """The coin's row for the Approaching list, or None if it is not just under a level."""
+        h = self.h
+        nl = next_level(st, now, h.min_high_age_days, h.min_history_days)
+        if nl is None or price >= nl.level:
+            return None
+        dist = (nl.level / price - 1) * 100
+        if dist > float(h.get("approach_pct", 3)):
+            return None
+        tp, sl = self.plan
+        return {"cg_id": st.cg_id, "symbol": st.symbol.upper(), "name": st.name, "rank": m["rank"], "kind": nl.kind,
+                "level": nl.level, "level_ms": nl.prev_high_ms, "price": price, "dist_pct": dist,
+                "target": nl.level * (1 + tp / 100), "stop": nl.level * (1 - sl / 100),
+                "market_cap": m["market_cap"], "volume": m["volume"], "weex_symbol": self.weex_symbol(st.symbol, price)}
+
+    def approach_new(self, now: int) -> list[dict]:
+        """Rows to alert now: not alerted for this coin and level within highs.approach_realert_h."""
+        h = self.h
+        again = float(h.get("approach_realert_h", 24)) * 3_600_000
+        out = []
+        for a in self.approaching:
+            if h.get("approach_weex_only", True) and not a["weex_symbol"]:
+                continue
+            if (a["volume"] or 0) < float(h.alert_min_volume_usd):
+                continue
+            prev = self.approach_sent.get(a["cg_id"])
+            if prev and abs(prev[0] / a["level"] - 1) < 1e-9 and now - prev[1] < again:
+                continue
+            out.append(a)
+        return out
+
+    async def alert_approaching(self, now: int) -> None:
+        h = self.h
+        new = self.approach_new(now)
+        if not new or not h.get("approach_telegram", True):
+            return
+        n = int(h.max_lines_per_alert)
+        for i in range(0, len(new), n):
+            chunk = new[i:i + n]
+            text = approach_text(chunk, now, self.plan, self.cfg.dashboard.base_url, len(new) > n)
+            await self.eng.tg.send(text, dedupe_key=f"highs-approach:{now}:{i}", event="highs_approach")
+            for a in chunk:                                  # once per level, sent or printed
+                self.approach_sent[a["cg_id"]] = [a["level"], now]
+        self.approach_sent = {k: v for k, v in self.approach_sent.items() if now - v[1] < 7 * DAY}
+        await asyncio.to_thread(self.db.set_state, APPROACH_STATE, self.approach_sent)
 
     # ---- scanning ---------------------------------------------------------------------------
     async def scan(self) -> list[dict]:
@@ -157,6 +223,7 @@ class HighsService:
         events: list[dict] = []
         coin_rows: list[dict] = []
         peaks: dict[int, tuple[float, int]] = {}
+        near: list[dict] = []
         top: list[str] = []
         for r in rows:
             cg_id, price = r.get("id"), r.get("current_price")
@@ -179,13 +246,17 @@ class HighsService:
             self.meta[cg_id] = m
             coin_rows.append({"cg_id": cg_id, "symbol": sym, "name": name, **m, "ath": st.ath, "ath_ms": st.ath_ms,
                               "hist": st.hist, "hist_ok": st.hist_ok, "hist_ms": st.hist_ms})
+            row = None if first_seen else self.approach_row(st, float(price), m, now)
+            if row:
+                near.append(row)
             for b in breaks:
                 events.append({"cg_id": cg_id, "symbol": sym.upper(), "name": name, "rank": m["rank"], "kind": b.kind,
                                "ts": now, "price": float(price), "level": float(b.level), "prev_high": float(b.prev_high),
                                "prev_high_ms": b.prev_high_ms, "market_cap": m["market_cap"], "volume": m["volume"],
-                               "weex_symbol": self.weex_symbol(sym),
+                               "weex_symbol": self.weex_symbol(sym, float(price)),
                                "peak": max(float(b.level), float(price)), "peak_ms": now})
         self.top_ids = top
+        self.approaching = sorted(near, key=lambda a: a["dist_pct"])
         await asyncio.to_thread(store.save_coins, self.db, coin_rows)
         await asyncio.to_thread(store.set_peaks, self.db, peaks)
         for cg_id in [c for c, v in self.tracked.items()             # stop following the old ones
@@ -198,6 +269,7 @@ class HighsService:
                 self.tracked.setdefault(e["cg_id"], []).append(
                     {"id": i, "ts": now, "base": e["peak"], "peak": e["peak"], "peak_ms": now})
             await self.alert(events, now)
+        await self.alert_approaching(now)
         self.last_scan_ms = now
         return events
 
@@ -296,12 +368,29 @@ class HighsService:
                 study = json.loads(p.read_text(encoding="utf-8"))
             except ValueError:
                 study = None
-        return {"events": out, "study": study,
-                "status": {"top_n": int(h.top_n), "tracked": len(self.top_ids), "history_ready": ready,
+        return {"events": out, "study": study, "approaching": self.approaching,
+                "status": {"approach_pct": float(h.get("approach_pct", 3)), "plan_target_pct": self.plan[0],
+                           "plan_stop_pct": self.plan[1], "top_n": int(h.top_n), "tracked": len(self.top_ids), "history_ready": ready,
                            "last_scan_ms": self.last_scan_ms, "scan_min": float(h.scan_min), "keyed": self.keyed,
                            "error": self.last_error, "min_high_age_days": float(h.min_high_age_days),
                            "show_days": int(h.show_days), "peak_track_days": self.track_ms / DAY,
                            "peaks_pending": sum(1 for v in self.tracked.values() for t in v if t["peak"] is None)}}
+
+
+def approach_text(rows: list[dict], now: int, plan: tuple[float, float], base_url: str, more: bool) -> str:
+    lines = ["🎯 Approaching a high · a buy-stop order at the level catches the break"]
+    for a in rows:
+        what = "ATH" if a["kind"] == ATH else "52W high"
+        rank = f" #{a['rank']}" if a["rank"] else ""
+        weex = f" · WEEX {a['weex_symbol']}" if a.get("weex_symbol") else ""
+        lines.append(f"{a['symbol']}{rank} {fmt_price(a['price'])} → {what} {fmt_price(a['level'])} "
+                     f"({a['dist_pct']:.1f}% away, set {age_text(a['level_ms'], now)}) · vol {fmt_usd(a['volume'])}{weex}")
+        lines.append(f"   target +{plan[0]:g}% {fmt_price(a['target'])} · stop -{plan[1]:g}% {fmt_price(a['stop'])}")
+    if more:
+        lines.append("(continued in the next message)")
+    lines.append("Levels are CoinGecko prices: check the level on the exchange chart before placing an order.")
+    lines.append(f"📋 {base_url.rstrip('/')}/highs")
+    return "\n".join(lines)
 
 
 def alert_text(events: list[dict], now: int, top_n: int, base_url: str, more: bool) -> str:
